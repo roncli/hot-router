@@ -15,7 +15,7 @@ declare module RouterBase {
 }
 
 declare class RouterBase {
-    get route(): RouterBase.Route
+    static get route(): RouterBase.Route
 }
 
 export = RouterBase
