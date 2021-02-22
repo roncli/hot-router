@@ -143,9 +143,13 @@ class Router extends EventEmitter {
      * Gets the router to use for the website.
      * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
+     * @param {object} [options] The options to use.
+     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
      * @returns {Promise<Express.Router>} A promise that resolves with the router to use for the website.
      */
-    async getRouter(routesPath) {
+    async getRouter(routesPath, options) {
+        options = {...{hot: true}, ...options || {}};
+
         await this.getClasses(routesPath);
 
         const router = express.Router(),
@@ -178,10 +182,12 @@ class Router extends EventEmitter {
             route.methods.forEach((method) => {
                 router[method](route.path, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {function} */ next) => {
                     try {
-                        for (const include of includes) {
-                            await this.checkCache(include);
+                        if (options.hot) {
+                            for (const include of includes) {
+                                await this.checkCache(include);
+                            }
+                            await this.checkCache(filename);
                         }
-                        await this.checkCache(filename);
 
                         if (!route.class[req.method.toLowerCase()]) {
                             if (methodNotAllowedFilename !== "") {
