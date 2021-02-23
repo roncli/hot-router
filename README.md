@@ -1,0 +1,359 @@
+# hot-router
+A router for Express that lets you setup route classes to easily create routes.  You can hot swap the code inside your route classes while your application is running.
+
+## Prerequisites
+hot-router is designed to work with Express, so Express is required in your project.  You may also optionally install express-ws if you wish to use hot-router with web sockets in Express.
+
+## Installing
+Use npm to install.
+
+```
+npm install hot-router
+```
+
+## Usage
+To use hot-router, there are two steps.  First, you must hook up hot-router as a router in Express, pointing at the directory that will contain your routes.  Second, you need to create route classes for hot-router to use.
+
+### Quick Setup
+
+#### index.js
+```javascript
+// Require path from node.js.
+const path = require("path");
+
+// Require express.
+const express = require("express");
+
+// Require hot-router.
+const HotRouter = require("hot-router");
+
+// Create a new Express app.
+const app = express();
+
+// Create a new router object.
+const router = new HotRouter.Router();
+
+// Listen to error events.
+router.on("error", (data) => {
+    console.log(`There was an error with one of the routes!  hot-router message: ${data.message}  error message: ${data.err.message}  request path: ${data.req.path}`);
+});
+
+(async () => {
+    // Use the router with Express.
+    try {
+        app.use(
+            "/",
+
+            // The parameter is the absolute path of the directory that will contain the route classes.
+            await router.getRouter(path.join(__dirname, "web"))
+        );
+    } catch (err) {
+        console.log(`There was an error setting up the routes!  error message: ${err.message}`);
+    }
+
+    // Start Express.
+    app.listen(process.env.PORT || 3030);
+}());
+```
+
+#### web/home.js
+```javascript
+// Require hot-router.
+const HotRouter = require("hot-router");
+
+// Define the class.
+class Home extends HotRouter.RouterBase {
+
+    // Setup the route.
+    static get route() {
+
+        // Get the default route from the base class.
+        const route = {...super.route};
+
+        // Modify the base route as needed.
+        route.path = "/";
+
+        // Return the route.
+        return route;
+    }
+
+    // Setup the GET method.
+    static get(req, res, next) {
+
+        // Return the response.
+        res.status(200).send("<html><body>Welcome to hot-router!</body></html>");
+    }
+}
+
+// Export the class.
+module.exports = Home;
+```
+
+### Router class
+The Router class provides the Express router to use with your app.
+
+#### Constructor
+The constructor has no parameters.
+
+```javascript
+const router = new HotRouter.Router();
+```
+
+#### Getting the Router for Express
+To get the route, you call the `getRouter()` method of the `router` object.  This call takes these parameters.
+
+| Parameter | Type | Description |
+|---|---|---|
+| **path** | _string_ | The absolute path to the directory containing the route classes. |
+| **options** | _object_ | _Optional._  The options to use. |
+| **options.hot** | _boolean_ | _Optional._  Defaults to true.  Whether to use hot routes.  Hot routes allow you to change code in the route while your application is running.  Note that this only applies to routes that existed when you started the application.  You will need to restart your application to add or remove any route classes. |
+
+##### Returns
+_Promise<Express.Router>_ - A promise with an Express router object that you can plug into Express.
+
+```javascript
+const router = new HotRouter.Router();
+app.use(
+    "/",
+    await router.getRouter(path.join(__dirname, "web"), {hot: true})
+);
+```
+
+#### Events
+There is one event, the `error` event.  The event returns an object that has these properties.
+
+| Property | Type | Description |
+|---|---|---|
+| **message** | _string_ | The error message describing what action hot-router was taking when the error occurred. |
+| **err** | _error_ | The error object.  This is the error that triggered the event. |
+| **req** | _Express.Request_ | The request object.  This is the request that caused the error. |
+
+```javascript
+const router = new HotRouter.Router();
+router.on("error", (data) => {
+    const {message, err, req} = data;
+});
+```
+
+### RouterBase class
+The RouterBase class is a static class that provides a framework with which you can easily create classes to handle your route classes.  To create your route class, you simply need to extend from the RouterBase class, setup your route, and create static methods to handle the HTTP methods you want to handle.
+
+```javascript
+class Home extends HotRouter.RouterBase {
+}
+```
+
+#### RouterBase.route property
+Customize your route by extending the RouterBase class's route property.  The easiest way to do this is by retrieving the base class's route property and customizing it for your needs.  The route property is an object with these properties.
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| path | _string_ | `undefined` | The route path.  This follows the normal Express syntax for routes, allowing you to take advantage of parameters via the `req.params` object within your route methods. |
+| include | _boolean_ | `false` | Marks the file as one that is included with every request.  Instead of methods for HTTP methods, you can create whatever methods you need and `require` this class in your other route classes.  This is useful for a class that other route classes need to call for common functionality, for instance to have a template for your web pages. |
+| webSocket | _boolean_ | `false` | Marks the file as one that handles web sockets.  Instead of methods for HTTP methods, you create methods for web socket events. |
+| notFound | _boolean_ | `false` | Marks the file as one that handles HTTP 404 Not Found requests.  This is called when no routes match.  Useful for overriding the default 404 web page. |
+| methodNotAllowed | _boolean_ | `false` | Marks the file as one that handles HTTP 405 Method Not Allowed requests.  This is called when an HTTP method is used with a route class that does not have that method defined as a function.  Useful for overriding the default 405 web page. |
+| serverError | _boolean_ | `false` | Marks the file as one that handles HTTP 500 Server Error requests.  This is called when something within node.js throws an error before it can successfully handle a request.  Useful for overriding the default 500 web page. |
+
+You should only ever need to define at most *one* of these properties, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
+
+Overriding the route is required in any class that extends from `RouterBase`.  To override the route property, use the following example:
+```javascript
+class Home extends HotRouter.RouterBase {
+    static get route() {
+        const route = {...super.route};
+        route.path = "/";
+        return route;
+    }
+}
+```
+
+The first line of the function gets a copy of the default route with the above properties.  The last line of the function returns the route.  In between are the lines where you define one of the route's properties.
+
+In this case, we have created a route for the top level page of the website, `/`.  That path can be anything, and you can use parameters, which will be available on any `Express.Request` object's `params` property.  For instance, a route path of `/user/:id` will match a uri of `/user/1` and then populate `req.params.id` with the string `"1"`.
+
+#### Basic Route Class
+A basic route class will override the path property and define one or more static methods that are the same as HTTP methods, only in lower case.
+
+This example requires the use of `app.use(express.urlencoded({extended: true}));` when starting up Express.
+
+```javascript
+class Login extends HotRouter.RouterBase {
+    static get route() {
+        const route = {...super.route};
+        route.path = "/login";
+        return route;
+    }
+
+    static get(req, res, next) {
+        res.status(200).send(`
+            <html>
+                <body>
+                    <form action="/login" method="POST">
+                        Username: <input type="text" name="username" /><br />
+                        Password: <input type="password" name="password" /><br />
+                        <input type="submit" value="Login" />
+                    </form>
+                </body>
+            </html>
+        `);
+    }
+
+    async static post(req, res, next) {
+        if (await Users.login(req.body.username, req.body.password)) {
+            res.redirect("/members-only");
+            return;
+        }
+
+        res.status(200).send(`
+            <html>
+                <body>
+                    <form action="/login" method="POST">
+                        Invalid log in, try again.<br />
+                        Username: <input type="text" name="username" /><br />
+                        Password: <input type="password" name="password" /><br />
+                        <input type="submit" value="Login" />
+                    </form>
+                </body>
+            </html>
+        `);
+    }
+}
+```
+
+You'll notice that in this example, the `post` method uses the `async` keyword.  You can use asynchronous functions for any of the HTTP methods if you will be using the async/await pattern.  Alternatively, you can return a Promise from any HTTP method function if you use the promises pattern instead.
+
+You are not just limited to HTTP GET and HTTP POST methods.  Any manner of HTTP methods can be used, even those that don't exist.  Any static method on this class will be called if a request is received that matches the route's `path`, and the HTTP method of the request, when lower cased, matches the name of the static method in the class.
+
+#### Include Route Class
+An include route class is useful if you call it from most or all of your basic route classes.  This commonly is used to do things like give your web pages the same look and feel, include the same CSS or JavaScript files, or do things that are common to every web page that calls it.  While it is not necessary to use include route classes, it is very helpful if you have turned on `hot` routes, because then changes to this file will be processed without you having to restart your node.js program.
+
+This example uses an include class called `MasterPage` to create a menu, and we will see the `Home` class use the `MasterPage` class to implement it.
+
+##### masterPage.js
+```javascript
+class MasterPage extends HotRouter.RouterBase {
+    static get route() {
+        const route = {...super.route};
+        route.include = true;
+        return route;
+    }
+
+    static get page(html) {
+        return `
+            <html>
+                <head>
+                    <link rel="stylesheet" href="/css/site.css" />
+                    <script src="/js/site.js"></script>
+                </head>
+                <body>
+                    Welcome to the web site!<br />
+                    <a href="/">Home</a> - <a href="/links">Links</a> - <a href="/about">About</a>
+                    ${html}
+                </body>
+            </html>
+        `;
+    }
+}
+```
+
+##### home.js
+```javascript
+class MasterPage extends HotRouter.Home {
+    static get route() {
+        const route = {...super.route};
+        route.path = "/";
+        return route;
+    }
+
+    static get(req, res, next) {
+        res.status(200).send(
+            Common.page(`
+                <div>The current server time is ${new Date()}.  Select a menu option above to continue.</div>
+            `);
+        );
+    }
+}
+```
+
+#### Web Socket Route Class
+When used in conjunction with express-ws, you can use hot-router to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since express-ws is based on the ws library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
+
+Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that express-ws is setup prior to getting the Express router from hot-router.
+
+##### ws.js
+```javascript
+const clients = [];
+
+class WS {
+    static broadcast(message) {
+        const str = JSON.stringify(message);
+
+        clients.forEach((client) => {
+            if (client.readyState !== 1) {
+                return;
+            }
+
+            client.send(str);
+        });
+    }
+
+    static register(ws) {
+        clients.push(ws);
+    }
+
+    static unregister(ws) {
+        clients.splice(clients.indexOf(ws), 1);
+    }
+}
+```
+
+##### homeWS.js
+```javascript
+class HomeWS extends HotRouter.Home {
+    static get route() {
+        const route = {...super.route};
+        route.path = "/";
+        route.webSocket = true;
+        return route;
+    }
+
+    static connection(ws, message) {
+        WS.register(ws);
+    }
+
+    static close(ws) {
+        WS.unregister(ws);
+    }
+}
+```
+
+#### Error Pages
+hot-router provides default error pages for HTTP 404 Not Found, HTTP 405 Method Not Allowed, and HTTP 500 Server Error pages.  You can override these in the route by setting the corresponding property to true.  You do not need to give any of these pages a path.
+
+Here is an example of a custom 404 page.
+
+```javascript
+class NotFound extends HotRouter.Home {
+    static get route() {
+        const route = {...super.route};
+        route.notFound = true;
+        return route;
+    }
+
+    static get(req, res, next) {
+        res.status(404).send(`
+            <html>
+                <body>
+                    Whoops!  You requested a page that doesn't exist!  Sorry about that.
+                </body>
+            </html>
+        `);
+    }
+}
+```
+
+## Versions
+
+### v1.0.0 Beta 1
+* Initial version.
