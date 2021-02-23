@@ -141,7 +141,6 @@ class Router extends EventEmitter {
     //  ###
     /**
      * Gets the router to use for the website.
-     * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
      * @param {object} [options] The options to use.
      * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
@@ -170,8 +169,6 @@ class Router extends EventEmitter {
                         route.class[event](ws, ...args);
                     });
                 });
-
-                ws.emit("init");
             });
         });
 
@@ -234,7 +231,6 @@ class Router extends EventEmitter {
         router.use((err, req, res, next) => {
             /**
              * Error event.
-             * @event Router#error
              * @type {object}
              * @property {string} message The error message.
              * @property {Error} err The error object.
