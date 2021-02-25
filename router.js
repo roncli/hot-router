@@ -188,13 +188,16 @@ class Router extends EventEmitter {
 
                         if (!route.class[req.method.toLowerCase()]) {
                             if (methodNotAllowedFilename !== "") {
-                                return routes[methodNotAllowedFilename].class.get(req, res, next);
+                                await routes[methodNotAllowedFilename].class.get(req, res, next);
+                                return;
                             }
 
-                            return res.status(405).send("HTTP 405 Method Not Allowed");
+                            res.status(405).send("HTTP 405 Method Not Allowed");
+                            return;
                         }
 
-                        return await route.class[req.method.toLowerCase()](req, res, next);
+                        await route.class[req.method.toLowerCase()](req, res, next);
+                        return;
                     } catch (err) {
                         /**
                          * Error event.
@@ -210,25 +213,27 @@ class Router extends EventEmitter {
                     }
 
                     if (serverErrorFilename !== "") {
-                        return routes[serverErrorFilename].class.get(req, res, next);
+                        await routes[serverErrorFilename].class.get(req, res, next);
+                        return;
                     }
 
-                    return res.status(500).send("HTTP 500 Server Error");
+                    res.status(500).send("HTTP 500 Server Error");
                 });
             });
         });
 
         // 404 remaining pages.
-        router.use((req, res, next) => {
+        router.use(async (req, res, next) => {
             if (notFoundFilename !== "") {
-                return routes[notFoundFilename].class.get(req, res, next);
+                await routes[notFoundFilename].class.get(req, res, next);
+                return;
             }
 
-            return res.status(404).send("HTTP 404 Not Found");
+            res.status(404).send("HTTP 404 Not Found");
         });
 
         // 500 errors.
-        router.use((err, req, res, next) => {
+        router.use(async (err, req, res, next) => {
             /**
              * Error event.
              * @type {object}
@@ -242,10 +247,11 @@ class Router extends EventEmitter {
             });
 
             if (serverErrorFilename !== "") {
-                return routes[serverErrorFilename].class.get(req, res, next);
+                await routes[serverErrorFilename].class.get(req, res, next);
+                return;
             }
 
-            return res.status(500).send("HTTP 500 Server Error");
+            res.status(500).send("HTTP 500 Server Error");
         });
 
         return router;
