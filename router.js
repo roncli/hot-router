@@ -78,7 +78,7 @@ class Router extends EventEmitter {
 
         const stats = await fs.stat(require.resolve(route.file));
 
-        if (!route.lastModified || route.lastModified !== stats.mtime) {
+        if (!route.lastModified || route.lastModified.getTime() !== stats.mtime.getTime()) {
             delete require.cache[require.resolve(route.file)];
             route.class = require(route.file);
             route.lastModified = stats.mtime;
