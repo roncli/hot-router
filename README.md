@@ -51,6 +51,11 @@ router.on("error", (data) => {
         console.log(`There was an error setting up the routes!  error message: ${err.message}`);
     }
 
+    // Catch-all error handler.
+    app.use((err, req, res, next) => {
+        router.error(err, req, res, next);
+    });
+
     // Start Express.
     app.listen(process.env.PORT || 3030);
 }());
@@ -113,10 +118,15 @@ _Promise<Express.Router>_ - A promise with an Express router object that you can
 
 ```javascript
 const router = new HotRouter.Router();
+
 app.use(
     "/",
     await router.getRouter(path.join(__dirname, "web"), {hot: true})
 );
+
+app.use((err, req, res, next) => {
+    router.error(err, req, res, next);
+});
 ```
 
 #### Events
@@ -354,6 +364,10 @@ class NotFound extends HotRouter.Home {
 ```
 
 ## Versions
+
+### v1.0.0 Beta 3 - 2/25/2021
+* Fixed asynchronous issues.
+* Added error handler to be used with Express's catch-all error handler.
 
 ### v1.0.0 Beta 2 - 2/24/2021
 * Fixed bug with hot route classes always reloading themselves, even if there wasn't a change with the file.
