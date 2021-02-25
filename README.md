@@ -355,5 +355,8 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
-### v1.0.0 Beta 1
+### v1.0.0 Beta 2 - 2/24/2021
+* Fixed bug with hot route classes always reloading themselves, even if there wasn't a change with the file.
+
+### v1.0.0 Beta 1 - 2/22/2021
 * Initial version.
