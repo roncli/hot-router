@@ -365,6 +365,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.0 Beta 4 - 3/20/2001
+* Pass through most HTTP errors from Express.
+
 ### v1.0.0 Beta 3 - 2/25/2021
 * Fixed asynchronous issues.
 * Added error handler to be used with Express's catch-all error handler.
