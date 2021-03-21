@@ -233,12 +233,16 @@ class Router extends EventEmitter {
                 err, req
             });
 
-            if (serverErrorFilename !== "") {
-                await routes[serverErrorFilename].class.get(req, res, next);
-                return;
-            }
+            if (err.status && err.status !== 500 && err.expose) {
+                res.status(err.status).send(err.message);
+            } else {
+                if (serverErrorFilename !== "") {
+                    await routes[serverErrorFilename].class.get(req, res, next);
+                    return;
+                }
 
-            res.status(500).send("HTTP 500 Server Error");
+                res.status(500).send("HTTP 500 Server Error");
+            }
         });
 
         return router;
