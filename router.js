@@ -1,5 +1,6 @@
 /**
  * @typedef {["error", function({message: string, err: Error, req: Express.Request}): void]} Events
+ * @typedef {import("http-errors").HttpError} HttpError
  * @typedef {import("express").NextFunction} Express.NextFunction
  * @typedef {import("express").Request} Express.Request
  * @typedef {import("express").Response} Express.Response
@@ -228,14 +229,14 @@ class Router extends EventEmitter {
 
         // 500 errors.
         router.use(async (err, req, res, next) => {
-            this.emit("error", {
-                message: "An unhandled error has occurred.",
-                err, req
-            });
-
             if (err.status && err.status !== 500 && err.expose) {
                 res.status(err.status).send(err.message);
             } else {
+                this.emit("error", {
+                    message: "An unhandled error has occurred.",
+                    err, req
+                });
+
                 if (serverErrorFilename !== "") {
                     await routes[serverErrorFilename].class.get(req, res, next);
                     return;
@@ -254,24 +255,28 @@ class Router extends EventEmitter {
     //  ##   #     #      ##   #
     /**
      * Handles a router error.
-     * @param {Error} err The error object.
+     * @param {HttpError} err The error object.
      * @param {Express.Request} req The request.
      * @param {Express.Response} res The response.
      * @param {Express.NextFunction} next The function to be called if the error is not handled.
      * @returns {Promise} A promise that resolves when the error is handled.
      */
     async error(err, req, res, next) {
-        this.emit("error", {
-            message: "An unhandled error has occurred.",
-            err, req
-        });
+        if (err.status && err.status !== 500 && err.expose) {
+            res.status(err.status).send(err.message);
+        } else {
+            this.emit("error", {
+                message: "An unhandled error has occurred.",
+                err, req
+            });
 
-        if (serverErrorFilename !== "") {
-            await routes[serverErrorFilename].class.get(req, res, next);
-            return;
+            if (serverErrorFilename !== "") {
+                await routes[serverErrorFilename].class.get(req, res, next);
+                return;
+            }
+
+            res.status(500).send("HTTP 500 Server Error");
         }
-
-        res.status(500).send("HTTP 500 Server Error");
     }
 }
 
