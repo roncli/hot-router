@@ -209,7 +209,7 @@ class Login extends HotRouter.RouterBase {
         `);
     }
 
-    async static post(req, res, next) {
+    static async post(req, res, next) {
         if (await Users.login(req.body.username, req.body.password)) {
             res.redirect("/members-only");
             return;
