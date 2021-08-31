@@ -164,7 +164,8 @@ class Router extends EventEmitter {
             const route = routes[filename];
 
             router.ws(route.path, (ws, req) => {
-                ws.url = req.url.replace("/.websocket", "").replace(".websocket", "") || "/";
+                // @ts-ignore
+                ws._url = req.url.replace("/.websocket", "").replace(".websocket", "") || "/";
 
                 route.events.forEach((event) => {
                     ws.on(event, (...args) => {
