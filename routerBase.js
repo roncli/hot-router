@@ -39,7 +39,8 @@ class RouterBase {
             methods: [],
             notFound: false,
             methodNotAllowed: false,
-            serverError: false
+            serverError: false,
+            middleware: []
         };
     }
 }

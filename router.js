@@ -1,11 +1,14 @@
 /**
  * @typedef {["error", function({message: string, err: Error, req: Express.Request}): void]} Events
- * @typedef {import("http-errors").HttpError} HttpError
  * @typedef {import("express").NextFunction} Express.NextFunction
  * @typedef {import("express").Request} Express.Request
  * @typedef {import("express").Response} Express.Response
  * @typedef {import("express").Router} Express.Router
+ * @typedef {import("http-errors").HttpError} HttpErrors.HttpError
+ * @typedef {import("./routerBase").BaseRoute} RouterBase.BaseRoute
  * @typedef {import("./routerBase").Route} RouterBase.Route
+ * @typedef {import("./routerBase").WebRoute} RouterBase.WebRoute
+ * @typedef {import("./routerBase").WebsocketRoute} RouterBase.WebsocketRoute
  */
 
 const EventEmitter = require("events").EventEmitter,
@@ -161,9 +164,9 @@ class Router extends EventEmitter {
 
         // Setup websocket routes.
         webSockets.forEach((filename) => {
-            const route = routes[filename];
+            const route = /** @type {RouterBase.BaseRoute & RouterBase.WebsocketRoute} */(routes[filename]); // eslint-disable-line no-extra-parens
 
-            router.ws(route.path, (ws, req) => {
+            router.ws(route.path, ...route.middleware, (ws, req) => {
                 // @ts-ignore
                 ws._url = req.url.replace("/.websocket", "").replace(".websocket", "") || "/";
 
@@ -177,10 +180,10 @@ class Router extends EventEmitter {
 
         // Setup page routes.
         pages.forEach((filename) => {
-            const route = routes[filename];
+            const route = /** @type {RouterBase.BaseRoute & RouterBase.WebRoute} */(routes[filename]); // eslint-disable-line no-extra-parens
 
             route.methods.forEach((method) => {
-                router[method](route.path, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {function} */ next) => {
+                router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {function} */ next) => {
                     try {
                         if (options.hot) {
                             for (const include of includes) {
@@ -256,7 +259,7 @@ class Router extends EventEmitter {
     //  ##   #     #      ##   #
     /**
      * Handles a router error.
-     * @param {HttpError} err The error object.
+     * @param {HttpErrors.HttpError} err The error object.
      * @param {Express.Request} req The request.
      * @param {Express.Response} res The response.
      * @param {Express.NextFunction} next The function to be called if the error is not handled.
