@@ -366,6 +366,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.0 Beta 8 - 9/21/2021
+* Do not process any routes if headers were already sent.
+
 ### v1.0.0 Beta 7 - 8/31/2021
 * Allow for middleware to be defined at the route level.
 
