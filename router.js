@@ -184,6 +184,10 @@ class Router extends EventEmitter {
 
             route.methods.forEach((method) => {
                 router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {function} */ next) => {
+                    if (res.headersSent) {
+                        return;
+                    }
+
                     try {
                         if (options.hot) {
                             for (const include of includes) {
@@ -223,6 +227,10 @@ class Router extends EventEmitter {
 
         // 404 remaining pages.
         router.use(async (req, res, next) => {
+            if (res.headersSent) {
+                return;
+            }
+
             if (notFoundFilename !== "") {
                 await routes[notFoundFilename].class.get(req, res, next);
                 return;
@@ -234,12 +242,20 @@ class Router extends EventEmitter {
         // 500 errors.
         router.use(async (err, req, res, next) => {
             if (err.status && err.status !== 500 && err.expose) {
+                if (res.headersSent) {
+                    return;
+                }
+
                 res.status(err.status).send(err.message);
             } else {
                 this.emit("error", {
                     message: "An unhandled error has occurred.",
                     err, req
                 });
+
+                if (res.headersSent) {
+                    return;
+                }
 
                 if (serverErrorFilename !== "") {
                     await routes[serverErrorFilename].class.get(req, res, next);
@@ -267,12 +283,20 @@ class Router extends EventEmitter {
      */
     async error(err, req, res, next) {
         if (err.status && err.status !== 500 && err.expose) {
+            if (res.headersSent) {
+                return;
+            }
+
             res.status(err.status).send(err.message);
         } else {
             this.emit("error", {
                 message: "An unhandled error has occurred.",
                 err, req
             });
+
+            if (res.headersSent) {
+                return;
+            }
 
             if (serverErrorFilename !== "") {
                 await routes[serverErrorFilename].class.get(req, res, next);
