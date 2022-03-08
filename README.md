@@ -366,6 +366,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.0 Beta 9 - 3/8/2022
+* Package updates.
+
 ### v1.0.0 Beta 8 - 9/21/2021
 * Do not process any routes if headers were already sent.
 
