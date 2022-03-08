@@ -18,12 +18,12 @@
         "url": "https://github.com/roncli/hot-router.git"
     },
     "dependencies": {
-        "express": "^4.17.1"
+        "express": "4.17.3"
     },
     "devDependencies": {
         "@babel/core": "7.17.5",
         "@babel/eslint-parser": "7.17.0",
-        "@types/express": "^4.17.11",
+        "@types/express": "4.17.13",
         "@types/express-ws": "3.0.1",
         "@types/http-errors": "1.8.2",
         "@types/node": "17.0.21",
