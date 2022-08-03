@@ -1,7 +1,7 @@
 {
     "name": "hot-router",
     "version": "1.0.0-beta.10",
-    "description": "A router for Express that lets you setup route classes to easily create routes. You can hot swap the code inside your route classes while your application is running.",
+    "description": "A router for Express that lets you set up route classes to easily create routes. For development, it can also be set up to hot swap the code inside your route classes while your application is running.",
     "homepage": "https://github.com/roncli/hot-router",
     "bugs": {
         "email": "roncli@roncli.com",

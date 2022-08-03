@@ -152,7 +152,7 @@ class Router extends EventEmitter {
      * @returns {Promise<Express.Router>} A promise that resolves with the router to use for the website.
      */
     async getRouter(routesPath, options) {
-        options = {...{hot: true}, ...options || {}};
+        options = {...{hot: false}, ...options || {}};
 
         await this.getClasses(routesPath);
 
@@ -162,7 +162,7 @@ class Router extends EventEmitter {
             webSockets = filenames.filter((c) => routes[c].webSocket),
             pages = filenames.filter((c) => !routes[c].include && !routes[c].webSocket && routes[c].path && routes[c].methods && routes[c].methods.length > 0);
 
-        // Setup websocket routes.
+        // Set up websocket routes.
         webSockets.forEach((filename) => {
             const route = /** @type {RouterBase.BaseRoute & RouterBase.WebsocketRoute} */(routes[filename]); // eslint-disable-line no-extra-parens
 
@@ -178,7 +178,7 @@ class Router extends EventEmitter {
             });
         });
 
-        // Setup page routes.
+        // Set up page routes.
         pages.forEach((filename) => {
             const route = /** @type {RouterBase.BaseRoute & RouterBase.WebRoute} */(routes[filename]); // eslint-disable-line no-extra-parens
 

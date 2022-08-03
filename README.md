@@ -1,5 +1,5 @@
 # hot-router
-A router for Express that lets you setup route classes to easily create routes.  You can hot swap the code inside your route classes while your application is running.
+A router for Express that lets you set up route classes to easily create routes.  For development, it can also be set up to hot swap the code inside your route classes while your application is running.
 
 ## Prerequisites
 hot-router is designed to work with Express, so Express is required in your project.  You may also optionally install express-ws if you wish to use hot-router with web sockets in Express.
@@ -69,7 +69,7 @@ const HotRouter = require("hot-router");
 // Define the class.
 class Home extends HotRouter.RouterBase {
 
-    // Setup the route.
+    // Set up the route.
     static get route() {
 
         // Get the default route from the base class.
@@ -82,7 +82,7 @@ class Home extends HotRouter.RouterBase {
         return route;
     }
 
-    // Setup the GET method.
+    // Set up the GET method.
     static get(req, res, next) {
 
         // Return the response.
@@ -111,7 +111,7 @@ To get the route, you call the `getRouter()` method of the `router` object.  Thi
 |---|---|---|
 | **path** | _string_ | The absolute path to the directory containing the route classes. |
 | **options** | _object_ | _Optional._  The options to use. |
-| **options.hot** | _boolean_ | _Optional._  Defaults to true.  Whether to use hot routes.  Hot routes allow you to change code in the route while your application is running.  Note that this only applies to routes that existed when you started the application.  You will need to restart your application to add or remove any route classes. |
+| **options.hot** | _boolean_ | _Optional._  Defaults to false.  Whether to use hot routes.  Hot routes allow you to change code in the route while your application is running at the cost of a small memory leak every time a route is updated.  **Therefore, this is not recommended to be set to `true` in production environments.**  Note that this only applies to routes that existed when you started the application.  You still will need to restart your application to add or remove any route classes. |
 
 ##### Returns
 _Promise<Express.Router>_ - A promise with an Express router object that you can plug into Express.
@@ -146,7 +146,7 @@ router.on("error", (data) => {
 ```
 
 ### RouterBase class
-The RouterBase class is a static class that provides a framework with which you can easily create classes to handle your route classes.  To create your route class, you simply need to extend from the RouterBase class, setup your route, and create static methods to handle the HTTP methods you want to handle.
+The RouterBase class is a static class that provides a framework with which you can easily create classes to handle your route classes.  To create your route class, you simply need to extend from the RouterBase class, set up your route, and create static methods to handle the HTTP methods you want to handle.
 
 ```javascript
 class Home extends HotRouter.RouterBase {
@@ -290,7 +290,7 @@ class MasterPage extends HotRouter.Home {
 #### Web Socket Route Class
 When used in conjunction with express-ws, you can use hot-router to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since express-ws is based on the ws library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
 
-Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that express-ws is setup prior to getting the Express router from hot-router.
+Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that express-ws is set up prior to getting the Express router from hot-router.
 
 ##### ws.js
 ```javascript
