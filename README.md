@@ -166,7 +166,7 @@ Customize your route by extending the RouterBase class's route property.  The ea
 | serverError | _boolean_ | `false` | Marks the file as one that handles HTTP 500 Server Error requests.  This is called when something within node.js throws an error before it can successfully handle a request.  Useful for overriding the default 500 web page. |
 | middleware | _RequestHandler<ParamsDictionary, any, any, qs.ParsedQs, Record<string, any>>[] &#124; WebsocketRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and express-ws middleware, depending on the value of `webSocket`. |
 
-You should only ever need to define at most *one* of these properties, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
+You should only ever need to define at most *one* of the properties of `path`, `include`, `notFound`, `methodNotAllowed`, and `serverError`, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
 
 Overriding the route is required in any class that extends from `RouterBase`.  To override the route property, use the following example:
 ```javascript
