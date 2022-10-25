@@ -366,6 +366,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.1 - 10/25/2022
+* Package updates.
+
 ### v1.0.0 - 8/3/2022
 * Hot routing is now disabled by default, you must set the `hot` option to `true` in `getRouter()` in order to enable hot routing.  **Hot routing is not intended for production use.**
 * Package updates.
