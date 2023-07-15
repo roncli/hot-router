@@ -171,12 +171,13 @@ class Router extends EventEmitter {
                 ws._url = req.url.replace("/.websocket", "").replace(".websocket", "") || "/";
 
                 route.events.forEach((event) => {
-                    ws.on(event, (...args) => {
+                    ws.on(event === "connection" ? "_init" : event, (...args) => {
                         route.class[event](ws, ...args);
                     });
                 });
 
-                ws.emit("init");
+                // Since the connection event is not re-fired, we use the _init event to forward the connection event to the client.
+                ws.emit("_init", req);
             });
         });
 
