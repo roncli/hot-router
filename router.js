@@ -175,6 +175,8 @@ class Router extends EventEmitter {
                         route.class[event](ws, ...args);
                     });
                 });
+
+                ws.emit("init");
             });
         });
 
