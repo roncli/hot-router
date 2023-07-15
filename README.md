@@ -366,6 +366,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.2 - 7/14/2023
+* Fix bug with web socket `connection` event.
+
 ### v1.0.1 - 10/25/2022
 * Package updates.
 
