@@ -26,7 +26,7 @@
         "@types/express": "5.0.0",
         "@types/express-ws": "3.0.5",
         "@types/http-errors": "2.0.4",
-        "@types/node": "22.10.3",
+        "@types/node": "22.10.5",
         "express-ws": "5.0.2"
     },
     "engines": {
