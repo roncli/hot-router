@@ -366,6 +366,11 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v1.0.4 - 3/29/2025
+* Improve typings.
+* Add `jest` unit tests.
+* Package updates.
+
 ### v1.0.3 - 8/6/2024
 * Package updates.
 
