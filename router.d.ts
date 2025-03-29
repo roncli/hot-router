@@ -1,19 +1,48 @@
 import {EventEmitter} from "events"
 import {Router as ExpressRouter, NextFunction} from "express"
+import {Router as ExpressWsRouter} from "express-ws"
+
+/**
+ * The event emitted when there is an error in the router.
+ */
+interface RouterErrorEvent {
+    message: string;
+    err: Error;
+    req: Express.Request;
+}
+
+/**
+ * The options for the router.
+ */
+interface RouterOptions {
+    hot?: boolean
+}
 
 declare class Router extends EventEmitter {
-    addListener(event: "error", listener: (arg: {message: string, err: Error, req: Express.Request}) => void): this
-    on(event: "error", listener: (arg: {message: string, err: Error, req: Express.Request}) => void): this
+    /**
+     * Adds an error event listener.
+     * @param {string} event The event name.
+     * @param {function} listener The listener function.
+     * @returns {this} The router instance.
+     */
+    addListener(event: "error", listener: (arg: RouterErrorEvent) => void): this
+
+    /**
+     * Adds an error event listener.
+     * @param {string} event The event name.
+     * @param {function} listener The listener function.
+     * @returns {this} The router instance.
+     */
+    on(event: "error", listener: (arg: RouterErrorEvent) => void): this
 
     /**
      * Gets the router to use for the website.
      * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
-     * @param {object} [options] The options to use.
-     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
-     * @returns {Promise<ExpressRouter>} A promise that resolves with the router to use for the website.
+     * @param {RouterOptions} [options] The options to use.
+     * @returns {Promise<ExpressWsRouter>} A promise that resolves with the router to use for the website.
      */
-    getRouter(routesPath: string, options?: {hot?: boolean}): Promise<ExpressRouter>
+    getRouter(routesPath: string, options?: RouterOptions): Promise<ExpressWsRouter>
 
     /**
      * Handles a router error.
@@ -21,7 +50,7 @@ declare class Router extends EventEmitter {
      * @param {Express.Request} req The request.
      * @param {Express.Response} res The response.
      * @param {NextFunction} next The function to be called if the error is not handled.
-     * @returns {Promise} A promise that resolves when the error is handled.
+     * @returns {Promise<void>}
      */
     error(err: Error, req: Express.Request, res: Express.Response, next: NextFunction): Promise<void>
 }
