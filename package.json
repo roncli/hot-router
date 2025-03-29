@@ -1,35 +1,37 @@
 {
     "name": "hot-router",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "description": "A router for Express that lets you set up route classes to easily create routes. For development, it can also be set up to hot swap the code inside your route classes while your application is running.",
     "homepage": "https://github.com/roncli/hot-router",
     "bugs": {
         "email": "roncli@roncli.com",
         "url": "https://github.com/roncli/hot-router/issues"
     },
-    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/roncli/hot-router.git"
+    },
+    "main": "index.js",
     "author": {
         "email": "roncli@roncli.com",
         "name": "Ronald M. Clifford",
         "url": "http://roncli.com"
     },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/roncli/hot-router.git"
-    },
+    "license": "MIT",
     "dependencies": {
         "express": "4.21.2"
     },
     "devDependencies": {
-        "@babel/core": "7.26.10",
-        "@babel/eslint-parser": "7.27.0",
+        "@eslint/js": "9.23.0",
+        "@stylistic/eslint-plugin": "4.2.0",
         "@types/express": "5.0.1",
         "@types/express-ws": "3.0.5",
         "@types/http-errors": "2.0.4",
         "@types/node": "22.13.14",
+        "eslint-plugin-jsdoc": "50.6.9",
         "express-ws": "5.0.2"
     },
     "engines": {
-        "node": ">=14.0.0"
+        "node": ">=16.0.0"
     }
 }
