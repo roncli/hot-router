@@ -28,7 +28,7 @@
         "@types/express-ws": "3.0.5",
         "@types/http-errors": "2.0.4",
         "@types/jest": "29.5.14",
-        "@types/node": "22.13.16",
+        "@types/node": "22.13.17",
         "@types/supertest": "6.0.3",
         "eslint-plugin-jsdoc": "50.6.9",
         "express-ws": "5.0.2",
