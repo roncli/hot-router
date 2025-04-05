@@ -2,13 +2,19 @@
 A router for Express that lets you set up route classes to easily create routes.  For development, it can also be set up to hot swap the code inside your route classes while your application is running.
 
 ## Prerequisites
-hot-router is designed to work with Express, so Express is required in your project.  You may also optionally install express-ws if you wish to use hot-router with web sockets in Express.
+hot-router is designed to work with Express, so Express is required in your project.  You may also optionally install websocket-express if you wish to use hot-router with web sockets in Express.
 
 ## Installing
 Use npm to install.
 
 ```
 npm install hot-router
+```
+
+If you are using websocket-express, you will need to install all of these dependencies as well.
+
+```
+npm install websocket-express ws @types/express @types/ws
 ```
 
 ## Usage
@@ -164,7 +170,7 @@ Customize your route by extending the RouterBase class's route property.  The ea
 | notFound | _boolean_ | `false` | Marks the file as one that handles HTTP 404 Not Found requests.  This is called when no routes match.  Useful for overriding the default 404 web page. |
 | methodNotAllowed | _boolean_ | `false` | Marks the file as one that handles HTTP 405 Method Not Allowed requests.  This is called when an HTTP method is used with a route class that does not have that method defined as a function.  Useful for overriding the default 405 web page. |
 | serverError | _boolean_ | `false` | Marks the file as one that handles HTTP 500 Server Error requests.  This is called when something within node.js throws an error before it can successfully handle a request.  Useful for overriding the default 500 web page. |
-| middleware | _RequestHandler<ParamsDictionary, any, any, qs.ParsedQs, Record<string, any>>[] &#124; WebsocketRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and express-ws middleware, depending on the value of `webSocket`. |
+| middleware | _RequestHandler<ParamsDictionary, any, any, qs.ParsedQs, Record<string, any>>[] \| WSRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and websocket-express middleware, depending on the value of `webSocket`. |
 
 You should only ever need to define at most *one* of the properties of `path`, `include`, `notFound`, `methodNotAllowed`, and `serverError`, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
 
@@ -288,9 +294,9 @@ class MasterPage extends HotRouter.Home {
 ```
 
 #### Web Socket Route Class
-When used in conjunction with express-ws, you can use hot-router to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since express-ws is based on the ws library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
+When used in conjunction with websocket-express, you can use hot-router to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since websocket-express is based on the ws library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
 
-Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that express-ws is set up prior to getting the Express router from hot-router.
+Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that websocket-express is setup prior to getting the Express router from hot-router.
 
 ##### ws.js
 ```javascript

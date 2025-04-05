@@ -27,7 +27,7 @@ class SampleRoute extends RouterBase {
      * @returns {void}
      */
     static connection(ws) {
-        ws.send("WebSocket connection established");
+        ws.send("WebSocket connection established", {mask: false});
     }
 }
 

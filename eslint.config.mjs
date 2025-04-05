@@ -94,6 +94,7 @@ export default [
             "@stylistic/multiline-comment-style": "off",
             "@stylistic/multiline-ternary": "off",
             "@stylistic/newline-per-chained-call": "off",
+            "@stylistic/no-extra-parens": ["error", "all", {"enforceForArrowConditionals": false}],
             "@stylistic/object-property-newline": "off",
             "@stylistic/padded-blocks": "off",
             "@stylistic/quote-props": "off",

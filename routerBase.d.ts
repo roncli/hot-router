@@ -1,26 +1,30 @@
 import { NextFunction, Request, RequestHandler, Response } from "express"
-import { WebsocketRequestHandler } from "express-ws"
 import { IncomingMessage } from "http"
 import { ParsedQs } from "qs"
 import { Duplex } from "stream"
 import { WebSocket } from "ws"
+import { WSRequestHandler } from "websocket-express"
 
 declare namespace RouterBase {
     interface BaseRoute {
-        file: string
-        lastModified: Date
         path?: string
         include: boolean
-        events: string[]
-        methods: string[]
         notFound: boolean
         methodNotAllowed: boolean
         serverError: boolean
+        middleware: RequestHandler[] | WSRequestHandler[]
     }
 
-    interface InternalWebsocketRoute {
+    interface InternalBaseRoute extends BaseRoute {
+        file: string
+        lastModified: Date
+        events: string[]
+        methods: string[]
+    }
+
+    interface InternalWebsocketRoute extends InternalBaseRoute {
         webSocket: true
-        middleware: WebsocketRequestHandler[]
+        middleware: WSRequestHandler[]
         class?: RouterBase & {
             close: (ws: WebSocket) => Promise<void> | void
             connection: (ws: WebSocket, request: IncomingMessage) => Promise<void> | void
@@ -31,30 +35,30 @@ declare namespace RouterBase {
         }
     }
 
-    interface InternalWebRoute {
+    interface InternalWebRoute extends InternalBaseRoute {
         webSocket: false
-        middleware: RequestHandler<{[key: string]: string}, any, any, ParsedQs, Record<string, any>>[]
+        middleware: RequestHandler[]
         class?: RouterBase & {
             [key: Lowercase<string>]: (req: Request, res: Response, next?: NextFunction) => Promise<void> | void
         }
     }
 
-    type InternalRoute = (BaseRoute & InternalWebsocketRoute) | (BaseRoute & InternalWebRoute)
+    type InternalRoute = InternalWebsocketRoute | InternalWebRoute
 
-    interface WebsocketRoute {
+    interface WebsocketRoute extends BaseRoute {
         webSocket: true
-        middleware: WebsocketRequestHandler[]
+        middleware: WSRequestHandler[]
     }
 
-    interface WebRoute {
+    interface WebRoute extends BaseRoute {
         webSocket: false
-        middleware: RequestHandler<{[key: string]: string}, any, any, ParsedQs, Record<string, any>>[]
+        middleware: RequestHandler[]
     }
 
-    export type Route = (BaseRoute & WebsocketRoute) | (BaseRoute & WebRoute)
+    export type Route = WebsocketRoute | WebRoute
 }
 
-declare class RouterBase {
+declare abstract class RouterBase {
     static get route(): RouterBase.Route
 }
 

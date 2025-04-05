@@ -1,6 +1,6 @@
 import {EventEmitter} from "events"
-import {Router as ExpressRouter, NextFunction} from "express"
-import {Router as ExpressWsRouter} from "express-ws"
+import {NextFunction, Router as expressRouter} from "express"
+import {Router as wsRouter} from "websocket-express";
 
 /**
  * The event emitted when there is an error in the router.
@@ -40,9 +40,9 @@ declare class Router extends EventEmitter {
      * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
      * @param {RouterOptions} [options] The options to use.
-     * @returns {Promise<ExpressWsRouter>} A promise that resolves with the router to use for the website.
+     * @returns {Promise<wsRouter | expressRouter>} A promise that resolves with the router to use for the website.
      */
-    getRouter(routesPath: string, options?: RouterOptions): Promise<ExpressWsRouter>
+    getRouter(routesPath: string, options?: RouterOptions): Promise<wsRouter | expressRouter>
 
     /**
      * Handles a router error.

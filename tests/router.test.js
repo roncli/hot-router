@@ -1,53 +1,33 @@
 const createHttpError = require("http-errors");
 const ErrorRoute = require("./errors/errorRoute");
-const express = require("express");
-const expressWs = require("express-ws");
 const fs = require("fs/promises");
 const request = require("supertest");
 const Router = require("../router");
 const WebSocket = require("ws");
+const WebSocketExpress = require("websocket-express");
+
+if (process.env.VSCODE_INSPECTOR_OPTIONS) {
+    jest.setTimeout(60 * 1000 * 60);
+}
 
 describe("Router", () => {
     test("should be defined", () => {
         expect(Router).toBeDefined();
     });
 
-    describe("getRouter", () => {
-        test("should return an ExpressWs router instance", async () => {
-            const app = express();
-
-            // Patch the app with express-ws
-            expressWs(app);
-
-            const router = new Router();
-            const expressRouter = await router.getRouter("./tests/routes", {hot: false});
-
-            // Check for core Express router methods
-            expect(typeof expressRouter.use).toBe("function");
-            expect(typeof expressRouter.get).toBe("function");
-            expect(typeof expressRouter.post).toBe("function");
-            expect(typeof expressRouter.put).toBe("function");
-            expect(typeof expressRouter.delete).toBe("function");
-            expect(typeof expressRouter.patch).toBe("function");
-            expect(typeof expressRouter.all).toBe("function");
-            expect(typeof expressRouter.param).toBe("function");
-
-            // Check for express-ws-specific methods
-            expect(typeof expressRouter.ws).toBe("function");
-        });
-    });
-
     describe("Route Integration Tests", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
+
+        let server;
         let error;
         let addListener;
 
         beforeEach(async () => {
             error = void 0;
-            addListener = true;
+            addListener = false;
 
-            app = express();
-            expressWs(app);
+            app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
             router.on("error", (data) => {
@@ -61,22 +41,24 @@ describe("Router", () => {
             app.use((err, req, res, next) => {
                 router.error(err, req, res, next);
             });
+
+            server = app.listen(3000);
         });
 
         test("should handle /sample with SampleRoute", async () => {
-            const response = await request(app).get("/sample");
+            const response = await request(server).get("/sample");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Sample route response");
         });
 
         test("should 404 for unknown route", async () => {
-            const response = await request(app).get("/unknown");
+            const response = await request(server).get("/unknown");
             expect(response.status).toBe(404);
             expect(response.text).toBe("HTTP 404 Not Found");
         });
 
         test("should 405 for post to /sample", async () => {
-            const response = await request(app).post("/sample");
+            const response = await request(server).post("/sample");
             expect(response.status).toBe(405);
             expect(response.text).toBe("HTTP 405 Method Not Allowed");
         });
@@ -84,58 +66,75 @@ describe("Router", () => {
         test("should handle /fail with FailRoute", async () => {
             const ip = "12.34.56.78";
             app.set("trust proxy", true);
-            const response = await request(app).get("/fail").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/fail").set("X-Forwarded-For", ip);
             expect(response.status).toBe(500);
             expect(response.text).toBe("HTTP 500 Server Error");
             expect(error?.message).toBe(`An error occurred in get /fail from ${ip} for /fail.`);
             expect(error?.err?.message).toBe("Intentional error for testing purposes");
+            expect(addListener).toBe(true);
         });
 
         test("should handle /nextError with NextErrorRoute", async () => {
-            const response = await request(app).get("/nextError");
+            const response = await request(server).get("/nextError");
             expect(response.status).toBe(500);
             expect(response.text).toBe("HTTP 500 Server Error");
             expect(error?.message).toBe("An unhandled error has occurred.");
             expect(error?.err?.message).toBe("Intentional error for testing purposes passed to middleware");
+            expect(addListener).toBe(true);
         });
 
         test("should handle /nextErrorWithStatus with nextErrorWithStatus", async () => {
-            const response = await request(app).get("/nextErrorWithStatus");
+            const response = await request(server).get("/nextErrorWithStatus");
             expect(response.status).toBe(503);
             expect(response.text).toBe("Intentional error for testing purposes passed to middleware");
             expect(error).toBeUndefined();
+            expect(addListener).toBe(false);
         });
 
-        test("should handle /ws with WsRoute", () => {
-            const server = app.listen(3000);
+        test("should handle /ws with WsRoute", async () => {
             const ws = new WebSocket("ws://localhost:3000/ws");
-            ws.on("message", async (message) => {
-                expect(message).toBe("WebSocket connection established");
-                expect(addListener).toBe(true);
-                ws.close();
-                await server.close();
+
+            const msg = await new Promise((resolve) => {
+                ws.on("message", (message) => {
+                    resolve(message);
+                });
+
+                ws.on("error", (err) => {
+                    resolve(err);
+                });
             });
+
+            ws.close();
+
+            expect(msg.toString()).toBe("WebSocket connection established");
+            expect(addListener).toBe(false);
         });
 
         test("should handle missing route with ErrorRoute", () => {
-            expect(() => {
-                app.get(ErrorRoute.route);
-            }).toThrow("You must implement the route property for ErrorRoute.");
+            expect(() => ErrorRoute.route).toThrow("You must implement the route property for ErrorRoute.");
+        });
+
+        afterEach(async () => {
+            await server.close();
         });
     });
 
     describe("Error Handling", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
 
+        let server;
+
         beforeEach(() => {
-            app = express();
-            expressWs(app);
+            app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
 
             app.use((err, req, res, next) => {
                 router.error(err, req, res, next);
             });
+
+            server = app.listen(3000);
         });
 
         test("should call router.error when an error occurs", async () => {
@@ -157,7 +156,7 @@ describe("Router", () => {
                 router.error(err, req, res, next);
             });
 
-            const response = await request(app).get("/triggerError");
+            const response = await request(server).get("/triggerError");
 
             // Assert that the error method was called
             expect(errorSpy).toHaveBeenCalled();
@@ -191,7 +190,7 @@ describe("Router", () => {
                 router.error(err, req, res, next);
             });
 
-            const response = await request(app).get("/triggerError");
+            const response = await request(server).get("/triggerError");
 
             // Assert that the error method was called
             expect(errorSpy).toHaveBeenCalled();
@@ -225,7 +224,7 @@ describe("Router", () => {
                 router.error(err, req, res, next);
             });
 
-            const response = await request(app).get("/triggerError");
+            const response = await request(server).get("/triggerError");
 
             // Assert that the error method was called
             expect(errorSpy).toHaveBeenCalled();
@@ -236,21 +235,29 @@ describe("Router", () => {
 
             errorSpy.mockRestore(); // Restore the original method
         });
+
+        afterEach(async () => {
+            await server.close();
+        });
     });
 
     describe("Hot Reloading", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
 
+        let server;
+
         beforeEach(async () => {
-            app = express();
-            expressWs(app);
+            app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
             app.use("/", await router.getRouter("./tests/routes", {hot: true}));
+
+            server = app.listen(3000);
         });
 
         test("should handle hot reloading with SampleRoute", async () => {
-            const response = await request(app).get("/sample");
+            const response = await request(server).get("/sample");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Sample route response");
 
@@ -258,21 +265,27 @@ describe("Router", () => {
             const content = await fs.readFile(path, "utf8");
             await fs.writeFile(path, content, "utf8");
 
-            const response2 = await request(app).get("/sample");
+            const response2 = await request(server).get("/sample");
             expect(response2.status).toBe(200);
             expect(response2.text).toBe("Sample route response");
+        });
+
+        afterEach(async () => {
+            await server.close();
         });
     });
 
     describe("Custom Errors", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
+
+        let server;
         let error;
 
         beforeEach(async () => {
             error = void 0;
 
-            app = express();
-            expressWs(app);
+            app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
 
@@ -285,22 +298,24 @@ describe("Router", () => {
             app.use((err, req, res, next) => {
                 router.error(err, req, res, next);
             });
+
+            server = app.listen(3000);
         });
 
         test("should handle custom /customSample route", async () => {
-            const response = await request(app).get("/customSample");
+            const response = await request(server).get("/customSample");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Sample route response");
         });
 
         test("should handle custom 404 error", async () => {
-            const response = await request(app).get("/unknown");
+            const response = await request(server).get("/unknown");
             expect(response.status).toBe(404);
             expect(response.text).toBe("Intentional 404 error for testing purposes");
         });
 
         test("should handle custom 405 error", async () => {
-            const response = await request(app).post("/customSample");
+            const response = await request(server).post("/customSample");
             expect(response.status).toBe(405);
             expect(response.text).toBe("Intentional 405 error for testing purposes");
         });
@@ -308,23 +323,29 @@ describe("Router", () => {
         test("should handle custom 500 error", async () => {
             const ip = "12.34.56.78";
             app.set("trust proxy", true);
-            const response = await request(app).get("/customFail").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/customFail").set("X-Forwarded-For", ip);
             expect(response.status).toBe(500);
             expect(response.text).toBe("Intentional 500 error for testing purposes");
             expect(error?.message).toBe(`An error occurred in get /customFail from ${ip} for /customFail.`);
             expect(error?.err?.message).toBe("Intentional error for testing purposes");
         });
+
+        afterEach(async () => {
+            await server.close();
+        });
     });
 
     describe("Headers already sent", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
+
+        let server;
         let error;
 
         beforeEach(async () => {
             error = void 0;
 
-            app = express();
-            expressWs(app);
+            app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
 
@@ -342,23 +363,29 @@ describe("Router", () => {
             app.use((err, req, res, next) => {
                 router.error(err, req, res, next);
             });
+
+            server = app.listen(3000);
         });
 
         test("should handle headers already sent error", async () => {
             const ip = "12.34.56.78";
             app.set("trust proxy", true);
-            const response = await request(app).get("/headers").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/headers").set("X-Forwarded-For", ip);
             expect(response.status).toBe(200);
             expect(response.text).toBe("Headers already sent error occurred.");
-            expect(error?.message).toBe(`An error occurred in get /headers from ${ip} for /headers.`);
-            expect(error?.err?.message).toBe("Cannot set headers after they are sent to the client");
+            expect(error?.message).toBe("An unhandled error has occurred.");
+            expect(error?.err?.message).toBe("Headers already sent.");
         });
 
         test("should handle 404 when headers have already been sent", async () => {
-            const response = await request(app).get("/not-found");
+            const response = await request(server).get("/not-found");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Headers already sent error occurred.");
             expect(error).toBeUndefined();
+        });
+
+        afterEach(async () => {
+            await server.close();
         });
     });
 });
