@@ -372,6 +372,12 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 1 - 4/5/2025
+* Upgrade to `express` v5.
+* Replace `express-ws` with `websocket-express`, which supports `express` v5.
+* Removed some internals of `RouterBase` from the default `route` property.
+* Implement basic 404 (4404) and 500 (1011) websocket routes.
+
 ### v1.0.4 - 3/29/2025
 * Improve typings.
 * Add `jest` unit tests.
