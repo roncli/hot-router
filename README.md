@@ -372,6 +372,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 2 - 4/6/2025
+* Allow `RegExp` objects for a `Route`'s `path`.
+
 ### v2.0.0 Beta 1 - 4/5/2025
 * Upgrade to `express` v5.
 * Replace `express-ws` with `websocket-express`, which supports `express` v5.
