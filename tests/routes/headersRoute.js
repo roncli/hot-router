@@ -1,9 +1,11 @@
 const RouterBase = require("../../routerBase");
 
+// MARK: class HeadersRoute
 /**
  * A headers route for testing.
  */
 class HeadersRoute extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -16,6 +18,7 @@ class HeadersRoute extends RouterBase {
         return route;
     }
 
+    // MARK: static get
     /**
      * Handles GET requests to the /headers route.
      * @param {import("express").Request} req - The request object.

@@ -6,10 +6,12 @@
 
 const RouterBase = require("../../routerBase");
 
+// MARK: class NextErrorRoute
 /**
  * An error route for testing.
  */
 class NextErrorRoute extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -22,6 +24,7 @@ class NextErrorRoute extends RouterBase {
         return route;
     }
 
+    // MARK: static get
     /**
      * Handles GET requests to the /nextError route.
      * @param {Request} req The request object.

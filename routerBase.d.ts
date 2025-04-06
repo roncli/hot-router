@@ -1,13 +1,12 @@
 import { NextFunction, Request, RequestHandler, Response } from "express"
 import { IncomingMessage } from "http"
-import { ParsedQs } from "qs"
 import { Duplex } from "stream"
 import { WebSocket } from "ws"
 import { WSRequestHandler } from "websocket-express"
 
 declare namespace RouterBase {
     interface BaseRoute {
-        path?: string
+        path?: string | RegExp
         include: boolean
         notFound: boolean
         methodNotAllowed: boolean

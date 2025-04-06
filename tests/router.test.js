@@ -10,11 +10,13 @@ if (process.env.VSCODE_INSPECTOR_OPTIONS) {
     jest.setTimeout(60 * 1000 * 60);
 }
 
+// MARK: Router
 describe("Router", () => {
     test("should be defined", () => {
         expect(Router).toBeDefined();
     });
 
+    // MARK: Route Integration Tests
     describe("Route Integration Tests", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
@@ -114,11 +116,20 @@ describe("Router", () => {
             expect(() => ErrorRoute.route).toThrow("You must implement the route property for ErrorRoute.");
         });
 
+        test("should handle regex route", async () => {
+            const response = await request(server).get("/this/is/a/directory/");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Directory route response: /this/is/a/directory/");
+            expect(error).toBeUndefined();
+            expect(addListener).toBe(false);
+        });
+
         afterEach(async () => {
             await server.close();
         });
     });
 
+    // MARK: Error Handling
     describe("Error Handling", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
@@ -241,6 +252,7 @@ describe("Router", () => {
         });
     });
 
+    // MARK: Hot Reloading
     describe("Hot Reloading", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
@@ -275,6 +287,7 @@ describe("Router", () => {
         });
     });
 
+    // MARK: Custom Errors
     describe("Custom Errors", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
@@ -335,7 +348,8 @@ describe("Router", () => {
         });
     });
 
-    describe("Headers already sent", () => {
+    // MARK: Headers Already Sent
+    describe("Headers Already Sent", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
 

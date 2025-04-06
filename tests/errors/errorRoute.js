@@ -1,5 +1,6 @@
 const RouterBase = require("../../routerBase");
 
+// MARK: class ErrorRoute
 /**
  * An error class for testing.
  */

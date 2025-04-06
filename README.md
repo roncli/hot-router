@@ -164,7 +164,7 @@ Customize your route by extending the RouterBase class's route property.  The ea
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| path | _string_ | `undefined` | The route path.  This follows the normal Express syntax for routes, allowing you to take advantage of parameters via the `req.params` object within your route methods. |
+| path | _string_ \| _RegExp_ | `undefined` | The route path.  This follows the normal Express syntax for routes, allowing you to take advantage of parameters via the `req.params` object within your route methods. |
 | include | _boolean_ | `false` | Marks the file as one that is included with every request.  Instead of methods for HTTP methods, you can create whatever methods you need and `require` this class in your other route classes.  This is useful for a class that other route classes need to call for common functionality, for instance to have a template for your web pages. |
 | webSocket | _boolean_ | `false` | Marks the file as one that handles web sockets.  Instead of methods for HTTP methods, you create methods for web socket events. |
 | notFound | _boolean_ | `false` | Marks the file as one that handles HTTP 404 Not Found requests.  This is called when no routes match.  Useful for overriding the default 404 web page. |

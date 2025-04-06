@@ -1,10 +1,10 @@
 const RouterBase = require("../../routerBase");
 
-// MARK: class FailRoute
+// MARK: class DirectoryRoute
 /**
- * A fail route for testing.
+ * A directory route for testing.
  */
-class FailRoute extends RouterBase {
+class DirectoryRoute extends RouterBase {
     // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
@@ -13,7 +13,7 @@ class FailRoute extends RouterBase {
     static get route() {
         const route = {...super.route};
 
-        route.path = "/fail";
+        route.path = /.*\/$/;
 
         return route;
     }
@@ -21,11 +21,13 @@ class FailRoute extends RouterBase {
     // MARK: static get
     /**
      * Handles GET requests to the /fail route.
+     * @param {import("express").Request} req - The request object.
+     * @param {import("express").Response} res - The response object.
      * @returns {void}
      */
-    static get() {
-        throw new Error("Intentional error for testing purposes");
+    static get(req, res) {
+        res.status(200).send(`Directory route response: ${req.path}`);
     }
 }
 
-module.exports = FailRoute;
+module.exports = DirectoryRoute;

@@ -4,10 +4,12 @@
 
 const RouterBase = require("../../../routerBase");
 
+// MARK: class WsRoute
 /**
  * A sample route for testing.
  */
-class SampleRoute extends RouterBase {
+class WsRoute extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -21,6 +23,7 @@ class SampleRoute extends RouterBase {
         return route;
     }
 
+    // MARK: static connection
     /**
      * Handles websocket connections to the /ws route.
      * @param {WebSocket} ws - The websocket object.
@@ -31,4 +34,4 @@ class SampleRoute extends RouterBase {
     }
 }
 
-module.exports = SampleRoute;
+module.exports = WsRoute;

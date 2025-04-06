@@ -1,9 +1,11 @@
 const RouterBase = require("../../routerBase");
 
+// MARK: class Route405
 /**
  * A route for testing 405 errors.
  */
 class Route405 extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -16,6 +18,7 @@ class Route405 extends RouterBase {
         return route;
     }
 
+    // MARK: static get
     /**
      * Handles GET requests to the server error route.
      * @param {import("express").Request} req The request object.

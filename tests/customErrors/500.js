@@ -1,9 +1,11 @@
 const RouterBase = require("../../routerBase");
 
+// MARK: class Route500
 /**
  * A route for testing 500 errors.
  */
 class Route500 extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -16,6 +18,7 @@ class Route500 extends RouterBase {
         return route;
     }
 
+    // MARK: static get
     /**
      * Handles GET requests to the server error route.
      * @param {import("express").Request} req The request object.

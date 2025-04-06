@@ -7,10 +7,12 @@
 const createHttpError = require("http-errors");
 const RouterBase = require("../../routerBase");
 
+// MARK: class NextErrorWithStatusRoute
 /**
  * An error route for testing.
  */
 class NextErrorWithStatusRoute extends RouterBase {
+    // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
      * @returns {RouterBase.Route} The route parameters.
@@ -23,6 +25,7 @@ class NextErrorWithStatusRoute extends RouterBase {
         return route;
     }
 
+    // MARK: static get
     /**
      * Handles GET requests to the /nextErrorWithStatus route.
      * @param {Request} req The request object.
