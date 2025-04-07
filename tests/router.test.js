@@ -287,6 +287,46 @@ describe("Router", () => {
         });
     });
 
+    // MARK: Catch All Routes
+    describe("Catch All Routes", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
+        let app;
+
+        let server;
+
+        beforeEach(async () => {
+            app = new WebSocketExpress.WebSocketExpress();
+
+            const router = new Router();
+
+            app.use("/", await router.getRouter("./tests/catchAll", {hot: false}));
+
+            server = app.listen(3000);
+        });
+
+        test("should handle /sample route", async () => {
+            const response = await request(server).get("/sample");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Sample route response");
+        });
+
+        test("should handle /catchAll route", async () => {
+            const response = await request(server).get("/catchAll");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Catch all route response, path: /catchAll");
+        });
+
+        test("should 404 the /404 route", async () => {
+            const response = await request(server).get("/404");
+            expect(response.status).toBe(404);
+            expect(response.text).toBe("HTTP 404 Not Found");
+        });
+
+        afterEach(async () => {
+            await server.close();
+        });
+    });
+
     // MARK: Custom Errors
     describe("Custom Errors", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */

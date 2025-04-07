@@ -21,6 +21,7 @@ class RouterBase {
 
         return {
             include: false,
+            catchAll: false,
             webSocket: false,
             notFound: false,
             methodNotAllowed: false,

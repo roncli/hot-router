@@ -8,6 +8,7 @@ declare namespace RouterBase {
     interface BaseRoute {
         path?: string | RegExp
         include: boolean
+        catchAll: boolean
         notFound: boolean
         methodNotAllowed: boolean
         serverError: boolean

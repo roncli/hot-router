@@ -164,13 +164,14 @@ Customize your route by extending the RouterBase class's route property.  The ea
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| path | _string_ \| _RegExp_ | `undefined` | The route path.  This follows the normal Express syntax for routes, allowing you to take advantage of parameters via the `req.params` object within your route methods. |
+| path | _string \| RegExp_ | `undefined` | The route path.  This follows the normal Express syntax for routes, allowing you to take advantage of parameters via the `req.params` object within your route methods. |
 | include | _boolean_ | `false` | Marks the file as one that is included with every request.  Instead of methods for HTTP methods, you can create whatever methods you need and `require` this class in your other route classes.  This is useful for a class that other route classes need to call for common functionality, for instance to have a template for your web pages. |
+| catchAll | _boolean_ | `false` | Marks the file as one that handles any requests that don't match your other routes.  Don't use this for 404 errors, set `notFound` instead.  If you set this and need to send a 404, you can call `next(); return;` in your `catchAll` route to trigger the 404. |
 | webSocket | _boolean_ | `false` | Marks the file as one that handles web sockets.  Instead of methods for HTTP methods, you create methods for web socket events. |
 | notFound | _boolean_ | `false` | Marks the file as one that handles HTTP 404 Not Found requests.  This is called when no routes match.  Useful for overriding the default 404 web page. |
 | methodNotAllowed | _boolean_ | `false` | Marks the file as one that handles HTTP 405 Method Not Allowed requests.  This is called when an HTTP method is used with a route class that does not have that method defined as a function.  Useful for overriding the default 405 web page. |
 | serverError | _boolean_ | `false` | Marks the file as one that handles HTTP 500 Server Error requests.  This is called when something within node.js throws an error before it can successfully handle a request.  Useful for overriding the default 500 web page. |
-| middleware | _RequestHandler<ParamsDictionary, any, any, qs.ParsedQs, Record<string, any>>[] \| WSRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and websocket-express middleware, depending on the value of `webSocket`. |
+| middleware | _RequestHandler[] \| WSRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and websocket-express middleware, depending on the value of `webSocket`. |
 
 You should only ever need to define at most *one* of the properties of `path`, `include`, `notFound`, `methodNotAllowed`, and `serverError`, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
 

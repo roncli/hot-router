@@ -1,10 +1,10 @@
 const RouterBase = require("../../routerBase");
 
-// MARK: class DirectoryRoute
+// MARK: class CatchAllRoute
 /**
- * A directory route for testing.
+ * A catch all route for testing.
  */
-class DirectoryRoute extends RouterBase {
+class CatchAllRoute extends RouterBase {
     // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
@@ -13,21 +13,25 @@ class DirectoryRoute extends RouterBase {
     static get route() {
         const route = {...super.route};
 
-        route.path = /.*\/$/;
+        route.catchAll = true;
 
         return route;
     }
 
     // MARK: static get
     /**
-     * Handles GET requests to the /fail route.
+     * Handles GET requests to this route.
      * @param {import("express").Request} req The request object.
      * @param {import("express").Response} res The response object.
      * @returns {void}
      */
-    static get(req, res) {
-        res.status(200).send(`Directory route response: ${req.path}`);
+    static get(req, res, next) {
+        if (req.path === "/404") {
+            next();
+            return;
+        }
+        res.status(200).send(`Catch all route response, path: ${req.path}`);
     }
 }
 
-module.exports = DirectoryRoute;
+module.exports = CatchAllRoute;

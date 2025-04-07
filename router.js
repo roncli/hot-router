@@ -31,6 +31,8 @@ class Router extends EventEmitter {
     /** @type {{[x: string]: RouterBase.InternalRoute}} */
     #routes = {};
 
+    #catchAllFilename = "";
+
     #notFoundFilename = "";
 
     #methodNotAllowedFilename = "";
@@ -91,7 +93,9 @@ class Router extends EventEmitter {
                 } else if (!route.include) {
                     this.#routes[filename].methods = Object.getOwnPropertyNames(routeClass).filter((p) => typeof routeClass[p] === "function");
                 }
-                if (route.notFound) {
+                if (route.catchAll) {
+                    this.#catchAllFilename = filename;
+                } else if (route.notFound) {
                     this.#notFoundFilename = filename;
                 } else if (route.methodNotAllowed) {
                     this.#methodNotAllowedFilename = filename;
@@ -236,15 +240,13 @@ class Router extends EventEmitter {
                             }
 
                             await route.class[req.method.toLowerCase()](req, res, next);
-                            return;
                         } catch (err) {
                             this.emit("error", {
                                 message: `An error occurred in ${req.method.toLowerCase()} ${route.path} from ${req.ip} for ${req.url}.`,
                                 err, req
                             });
+                            await this.#handleServerError(req, res, next);
                         }
-
-                        await this.#handleServerError(req, res, next);
                     });
                 });
 
@@ -256,6 +258,35 @@ class Router extends EventEmitter {
         });
 
         const use = (wsExpress && router instanceof wsExpress.Router ? router.useHTTP : router.use); // eslint-disable-line @stylistic/no-extra-parens
+
+        // Use a catch all route if it is setup.
+        if (this.#catchAllFilename !== "") {
+            const routeCatchAll = this.#routes[this.#catchAllFilename];
+            if (routeCatchAll.webSocket === false) {
+                use(...routeCatchAll.middleware, async (req, res, next) => {
+                    if (res.headersSent) {
+                        next(new Error("Headers already sent."));
+                    }
+
+                    try {
+                        if (options.hot) {
+                            for (const include of includes) {
+                                await this.#checkCache(include);
+                            }
+                            await this.#checkCache(this.#catchAllFilename);
+                        }
+
+                        await routeCatchAll.class.get(req, res, next);
+                    } catch (err) {
+                        this.emit("error", {
+                            message: `An error occurred in ${req.method.toLowerCase()} ${routeCatchAll.path} from ${req.ip} for ${req.url}.`,
+                            err, req
+                        });
+                        await this.#handleServerError(req, res, next);
+                    }
+                });
+            }
+        }
 
         // 404 remaining pages.
         use(async (req, res, next) => {
