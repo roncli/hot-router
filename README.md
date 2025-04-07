@@ -373,6 +373,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 3 - 4/6/2025
+* Add a `catchAll` option for routes that handles anything that doesn't match other routes.
+
 ### v2.0.0 Beta 2 - 4/6/2025
 * Allow `RegExp` objects for a `Route`'s `path`.
 
