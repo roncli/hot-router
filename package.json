@@ -30,7 +30,7 @@
     "devDependencies": {
         "@eslint/js": "9.28.0",
         "@stylistic/eslint-plugin": "4.4.1",
-        "@types/http-errors": "2.0.4",
+        "@types/http-errors": "2.0.5",
         "@types/jest": "29.5.14",
         "@types/node": "22.15.30",
         "@types/supertest": "6.0.3",
