@@ -34,7 +34,7 @@
         "@types/jest": "30.0.0",
         "@types/node": "24.5.2",
         "@types/supertest": "6.0.3",
-        "eslint-plugin-jsdoc": "58.1.1",
+        "eslint-plugin-jsdoc": "59.0.0",
         "jest": "30.0.5",
         "node-mocks-http": "1.16.2",
         "supertest": "7.1.4"
