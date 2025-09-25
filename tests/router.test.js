@@ -418,9 +418,7 @@ describe("Router", () => {
         });
 
         test("should handle headers already sent error", async () => {
-            const ip = "12.34.56.78";
-            app.set("trust proxy", true);
-            const response = await request(server).get("/headers").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/headers");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Headers already sent error occurred.");
             expect(error?.message).toBe("An unhandled error has occurred.");
