@@ -246,7 +246,7 @@ class Router extends EventEmitter {
                             }
                         } catch (err) {
                             this.emit("error", {
-                                message: `An error occurred in ${req.method.toLowerCase()} ${route.path} for ${req.url}.`,
+                                message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${route.path}.`,
                                 err, req
                             });
                             await this.#handleServerError(req, res, next);
@@ -283,7 +283,7 @@ class Router extends EventEmitter {
                         await routeCatchAll.class.get(req, res, next);
                     } catch (err) {
                         this.emit("error", {
-                            message: `An error occurred in ${req.method.toLowerCase()} ${routeCatchAll.path} for ${req.url}.`,
+                            message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${routeCatchAll.path}.`,
                             err, req
                         });
                         await this.#handleServerError(req, res, next);
