@@ -239,10 +239,14 @@ class Router extends EventEmitter {
                                 await this.#checkCache(filename);
                             }
 
-                            await route.class[req.method.toLowerCase()](req, res, next);
+                            if (method === "GET") {
+                                await route.class.get(req, res, next);
+                            } else {
+                                await route.class[req.method.toLowerCase()](req, res, next);
+                            }
                         } catch (err) {
                             this.emit("error", {
-                                message: `An error occurred in ${req.method.toLowerCase()} ${route.path} from ${req.ip} for ${req.url}.`,
+                                message: `An error occurred in ${req.method.toLowerCase()} ${route.path} for ${req.url}.`,
                                 err, req
                             });
                             await this.#handleServerError(req, res, next);
@@ -279,7 +283,7 @@ class Router extends EventEmitter {
                         await routeCatchAll.class.get(req, res, next);
                     } catch (err) {
                         this.emit("error", {
-                            message: `An error occurred in ${req.method.toLowerCase()} ${routeCatchAll.path} from ${req.ip} for ${req.url}.`,
+                            message: `An error occurred in ${req.method.toLowerCase()} ${routeCatchAll.path} for ${req.url}.`,
                             err, req
                         });
                         await this.#handleServerError(req, res, next);
