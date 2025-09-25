@@ -66,12 +66,10 @@ describe("Router", () => {
         });
 
         test("should handle /fail with FailRoute", async () => {
-            const ip = "12.34.56.78";
-            app.set("trust proxy", true);
-            const response = await request(server).get("/fail").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/fail");
             expect(response.status).toBe(500);
             expect(response.text).toBe("HTTP 500 Server Error");
-            expect(error?.message).toBe(`An error occurred in get /fail from ${ip} for /fail.`);
+            expect(error?.message).toBe("An error occurred in get /fail for /fail.");
             expect(error?.err?.message).toBe("Intentional error for testing purposes");
             expect(addListener).toBe(true);
         });
@@ -374,12 +372,10 @@ describe("Router", () => {
         });
 
         test("should handle custom 500 error", async () => {
-            const ip = "12.34.56.78";
-            app.set("trust proxy", true);
-            const response = await request(server).get("/customFail").set("X-Forwarded-For", ip);
+            const response = await request(server).get("/customFail");
             expect(response.status).toBe(500);
             expect(response.text).toBe("Intentional 500 error for testing purposes");
-            expect(error?.message).toBe(`An error occurred in get /customFail from ${ip} for /customFail.`);
+            expect(error?.message).toBe("An error occurred in get /customFail for /customFail.");
             expect(error?.err?.message).toBe("Intentional error for testing purposes");
         });
 
