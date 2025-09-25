@@ -229,6 +229,7 @@ class Router extends EventEmitter {
                     router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
                         if (res.headersSent) {
                             next(new Error("Headers already sent."));
+                            return;
                         }
 
                         try {
@@ -270,6 +271,7 @@ class Router extends EventEmitter {
                 use(...routeCatchAll.middleware, async (req, res, next) => {
                     if (res.headersSent) {
                         next(new Error("Headers already sent."));
+                        return;
                     }
 
                     try {
