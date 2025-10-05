@@ -373,6 +373,9 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 6 - 10/5/2025
+* Fix bug with HEAD request not working correctly when there is no HEAD method defined in the route class.
+
 ### v2.0.0 Beta 5 - 10/5/2025
 * Better fix for the HEAD request.
 * Package updates.
