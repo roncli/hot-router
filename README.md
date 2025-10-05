@@ -373,6 +373,10 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 5 - 10/5/2025
+* Better fix for the HEAD request.
+* Package updates.
+
 ### v2.0.0 Beta 4 - 9/24/2025
 * Require node.js 18.
 * Updated error messages to remove IP addresses and change the order of the path and URL to make more sense.
