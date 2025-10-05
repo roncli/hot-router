@@ -226,6 +226,7 @@ class Router extends EventEmitter {
 
             if (route.webSocket === false) {
                 route.methods.forEach((method) => {
+                    method = method.toUpperCase();
                     router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
                         if (res.headersSent) {
                             next(new Error("Headers already sent."));
@@ -240,7 +241,7 @@ class Router extends EventEmitter {
                                 await this.#checkCache(filename);
                             }
 
-                            if (method === "GET") {
+                            if (method === "HEAD") {
                                 await route.class.get(req, res, next);
                             } else {
                                 await route.class[req.method.toLowerCase()](req, res, next);
