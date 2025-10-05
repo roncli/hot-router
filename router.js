@@ -226,8 +226,9 @@ class Router extends EventEmitter {
 
             if (route.webSocket === false) {
                 route.methods.forEach((method) => {
-                    method = method.toUpperCase();
                     router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
+                        method = method.toUpperCase();
+
                         if (res.headersSent) {
                             next(new Error("Headers already sent."));
                             return;
