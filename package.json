@@ -43,7 +43,7 @@
         "node": ">=18.0.0"
     },
     "scripts": {
-        "reinstall": "if exist node_modules rmdir /s /q node_modules & npm install",
+        "reinstall": "(if exist node_modules rmdir /s /q node_modules) & npm install",
         "test": "jest --coverage"
     }
 }
