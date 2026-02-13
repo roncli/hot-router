@@ -36,13 +36,13 @@ declare class Router extends EventEmitter {
     on(event: "error", listener: (arg: RouterErrorEvent) => void): this
 
     /**
-     * Gets the router to use for the website.
+     * Gets the routers to use for the website.
      * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
      * @param {RouterOptions} [options] The options to use.
-     * @returns {Promise<wsRouter | expressRouter>} A promise that resolves with the router to use for the website.
+     * @returns {Promise<{webRouter: expressRouter, websocketRouter?: wsRouter}>} A promise that resolves with the routers to use for the website.
      */
-    getRouter(routesPath: string, options?: RouterOptions): Promise<wsRouter | expressRouter>
+    getRouters(routesPath: string, options?: RouterOptions): Promise<{webRouter: expressRouter, websocketRouter?: wsRouter}>
 
     /**
      * Handles a router error.

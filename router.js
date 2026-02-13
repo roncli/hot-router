@@ -12,16 +12,18 @@
  * @typedef {import("websocket-express").Router} WebSocketExpress.Router
  */
 
-const EventEmitter = require("events").EventEmitter,
+const {EventEmitter} = require("events"),
     express = require("express"),
     fs = require("fs/promises"),
     path = require("path");
 
-/** @type {WebSocketExpress} */
-let wsExpress;
-try {
-    wsExpress = require("websocket-express");
-} finally {}
+const wsExpress = (() => {
+    try {
+        return require("websocket-express");
+    } catch {
+        return void 0;
+    }
+})();
 
 // MARK: class Router
 /**
@@ -58,6 +60,20 @@ class Router extends EventEmitter {
         }
     }
 
+    // MARK: async #checkCaches
+    /**
+     * Checks the caches for multiple files and refreshes them if necessary.
+     * @param {string[]} includes The includes to check for.
+     * @param {string} filename The file to check for.
+     * @returns {Promise} A promise that resolves once the caches are checked.
+     */
+    async #checkCaches(includes, filename) {
+        await Promise.all([
+            ...includes.map((include) => this.#checkCache(include)),
+            this.#checkCache(filename)
+        ]);
+    }
+
     // MARK: async #getClasses
     /**
      * Gets all of the available classes.
@@ -65,29 +81,31 @@ class Router extends EventEmitter {
      * @returns {Promise} A promise that resolves when all the classes are retrieved.
      */
     async #getClasses(dir) {
-        const list = await fs.readdir(dir);
         const filenames = [];
 
-        for (const file of list) {
+        for await (const dirEntry of await fs.opendir(dir)) {
+            const file = dirEntry.name;
             const filename = path.resolve(dir, file);
 
             const stat = await fs.stat(filename);
 
-            if (stat && stat.isDirectory()) {
+            if (stat.isDirectory()) {
                 await this.#getClasses(filename);
             } else {
                 const routeClass = require(filename);
 
-                /** @type {RouterBase.Route} */
-                const route = routeClass.route;
+                /** @type {{route: RouterBase.Route}} */
+                const {route} = routeClass;
 
                 this.#routes[filename] = {
                     ...route,
                     file: filename,
-                    lastModified: new Date(1970, 0, 1),
+                    lastModified: stat.mtime,
                     events: [],
-                    methods: []
+                    methods: [],
+                    class: routeClass
                 };
+
                 if (route.webSocket) {
                     this.#routes[filename].events = Object.getOwnPropertyNames(routeClass).filter((p) => typeof routeClass[p] === "function");
                 } else if (!route.include) {
@@ -102,10 +120,7 @@ class Router extends EventEmitter {
                 } else if (route.serverError) {
                     this.#serverErrorFilename = filename;
                 }
-                this.#routes[filename].file = filename;
                 filenames.push(filename);
-                this.#routes[filename].class = routeClass;
-                this.#routes[filename].lastModified = (await fs.stat(require.resolve(filename))).mtime;
             }
         }
     }
@@ -155,6 +170,27 @@ class Router extends EventEmitter {
         }
     }
 
+    // MARK: static async #restCall
+    /**
+     * Makes a REST call to the appropriate method on the route class.
+     * @param {Express.Request} req The request object.
+     * @param {Express.Response} res The response object.
+     * @param {Express.NextFunction} next The next middleware function.
+     * @param {object} routeClass The route class to call the method on.
+     * @returns {Promise} A promise that resolves when the call is complete.
+     */
+    static async #restCall(req, res, next, routeClass) {
+        if (req.method.toLowerCase() === "head") {
+            if (routeClass.head) {
+                await routeClass.head(req, res, next);
+            } else {
+                await routeClass.get(req, res, next);
+            }
+        } else {
+            await routeClass[req.method.toLowerCase()](req, res, next);
+        }
+    }
+
     // MARK: addListener
     /**
      * Adds a listener.
@@ -175,21 +211,22 @@ class Router extends EventEmitter {
         return super.on(...args);
     }
 
-    // MARK: async getRouter
+    // MARK: async getRouters
     /**
-     * Gets the router to use for the website.
+     * Gets the routers to use for the website.
      * @param {string} routesPath The directory with the route classes.
      * @param {object} [options] The options to use.
      * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
-     * @returns {Promise<WebSocketExpress.Router | Express.Router>} A promise that resolves with the router to use for the website.
+     * @returns {Promise<{webRouter: Express.Router, websocketRouter?: WebSocketExpress.Router}>} A promise that resolves with the router to use for the website.
      */
-    async getRouter(routesPath, options) {
+    async getRouters(routesPath, options) {
         options = {...{hot: false}, ...options || {}};
 
         await this.#getClasses(routesPath);
 
         /** @type {WebSocketExpress.Router | Express.Router} */
-        const router = wsExpress ? new wsExpress.Router() : express.Router();
+        const webRouter = express.Router();
+        const websocketRouter = wsExpress ? new wsExpress.Router() : void 0;
 
         const filenames = Object.keys(this.#routes),
             includes = filenames.filter((c) => this.#routes[c].include),
@@ -201,14 +238,22 @@ class Router extends EventEmitter {
             const route = this.#routes[filename];
 
             if (route.webSocket) {
-                if (wsExpress && router instanceof wsExpress.Router) {
-                    router.ws(route.path, ...route.middleware, async (req, res) => {
+                if (wsExpress && websocketRouter instanceof wsExpress.Router) {
+                    websocketRouter.ws(route.path, ...route.middleware, async (req, res) => {
                         const ws = await res.accept();
 
                         route.events.forEach((event) => {
                             ws.on(event === "connection" ? "_init" : event, (...args) => {
                                 if (route.webSocket) {
-                                    route.class[event](ws, ...args);
+                                    try {
+                                        route.class[event](ws, ...args);
+                                    } catch (err) {
+                                        ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
+                                        this.emit("error", {
+                                            message: "An unhandled WebSocket error has occurred.",
+                                            err, req
+                                        });
+                                    }
                                 }
                             });
                         });
@@ -226,7 +271,7 @@ class Router extends EventEmitter {
 
             if (route.webSocket === false) {
                 route.methods.forEach((method) => {
-                    router[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
+                    webRouter[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
                         if (res.headersSent) {
                             next(new Error("Headers already sent."));
                             return;
@@ -234,21 +279,10 @@ class Router extends EventEmitter {
 
                         try {
                             if (options.hot) {
-                                for (const include of includes) {
-                                    await this.#checkCache(include);
-                                }
-                                await this.#checkCache(filename);
+                                await this.#checkCaches(includes, filename);
                             }
 
-                            if (req.method.toLowerCase() === "head") {
-                                if (route.class.head) {
-                                    await route.class.head(req, res, next);
-                                } else {
-                                    await route.class.get(req, res, next);
-                                }
-                            } else {
-                                await route.class[req.method.toLowerCase()](req, res, next);
-                            }
+                            await Router.#restCall(req, res, next, route.class);
                         } catch (err) {
                             this.emit("error", {
                                 message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${route.path}.`,
@@ -260,19 +294,17 @@ class Router extends EventEmitter {
                 });
 
                 // Add a fallback for unsupported methods
-                router.all(route.path, async (req, res, next) => {
+                webRouter.all(route.path, async (req, res, next) => {
                     await this.#handleMethodNotAllowed(req, res, next);
                 });
             }
         });
 
-        const use = (wsExpress && router instanceof wsExpress.Router ? router.useHTTP : router.use); // eslint-disable-line @stylistic/no-extra-parens
-
         // Use a catch all route if it is setup.
         if (this.#catchAllFilename !== "") {
             const routeCatchAll = this.#routes[this.#catchAllFilename];
             if (routeCatchAll.webSocket === false) {
-                use(...routeCatchAll.middleware, async (req, res, next) => {
+                webRouter.use(...routeCatchAll.middleware, async (req, res, next) => {
                     if (res.headersSent) {
                         next(new Error("Headers already sent."));
                         return;
@@ -280,16 +312,13 @@ class Router extends EventEmitter {
 
                     try {
                         if (options.hot) {
-                            for (const include of includes) {
-                                await this.#checkCache(include);
-                            }
-                            await this.#checkCache(this.#catchAllFilename);
+                            await this.#checkCaches(includes, this.#catchAllFilename);
                         }
 
-                        await routeCatchAll.class.get(req, res, next);
+                        await Router.#restCall(req, res, next, routeCatchAll.class);
                     } catch (err) {
                         this.emit("error", {
-                            message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${routeCatchAll.path}.`,
+                            message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for the catch all path.`,
                             err, req
                         });
                         await this.#handleServerError(req, res, next);
@@ -299,7 +328,7 @@ class Router extends EventEmitter {
         }
 
         // 404 remaining pages.
-        use(async (req, res, next) => {
+        webRouter.use(async (req, res, next) => {
             if (res.headersSent) {
                 // Clean up and end response.
                 if (!res.writableEnded) {
@@ -320,7 +349,7 @@ class Router extends EventEmitter {
         });
 
         // 500 errors.
-        use(async (err, req, res, next) => {
+        webRouter.use(async (err, req, res, next) => {
             if (err.status && err.status !== 500 && err.expose) {
                 res.status(err.status).send(err.message);
             } else {
@@ -333,30 +362,7 @@ class Router extends EventEmitter {
             }
         });
 
-        // Add a fallback for unmatched WebSocket paths.
-        if (wsExpress && router instanceof wsExpress.Router) {
-            router.ws("/", async (req, /** @type {WebSocketExpress.WSResponse} */ res) => {
-                const ws = await res.accept();
-                res.sendError(404, 4404, JSON.stringify({error: "WebSocket path not found."}));
-                ws.close();
-            });
-        }
-
-        // Add a global WebSocket error handler.
-        if (wsExpress && router instanceof wsExpress.Router) {
-            router.ws("/", async (err, req, /** @type {WebSocketExpress.WSResponse} */ res, next) => { // eslint-disable-line no-unused-vars
-                const ws = await res.accept();
-                res.sendError(500, 1011, JSON.stringify({error: "An unhandled error has occurred."}));
-                ws.close();
-
-                this.emit("error", {
-                    message: "An unhandled WebSocket error has occurred.",
-                    err, req
-                });
-            });
-        }
-
-        return router;
+        return {webRouter, websocketRouter};
     }
 
     // MARK: async error

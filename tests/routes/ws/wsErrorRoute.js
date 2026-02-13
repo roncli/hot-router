@@ -4,11 +4,11 @@
 
 const RouterBase = require("../../../routerBase");
 
-// MARK: class WsRoute
+// MARK: class WsErrorRoute
 /**
- * A sample route for testing.
+ * A sample error route for testing.
  */
-class WsRoute extends RouterBase {
+class WsErrorRoute extends RouterBase {
     // MARK: static get route
     /**
      * Retrieves the route parameters for the class.
@@ -17,7 +17,7 @@ class WsRoute extends RouterBase {
     static get route() {
         const route = {...super.route};
 
-        route.path = "/ws";
+        route.path = "/wsError";
         route.webSocket = true;
 
         return route;
@@ -26,22 +26,11 @@ class WsRoute extends RouterBase {
     // MARK: static connection
     /**
      * Handles websocket connections to the /ws route.
-     * @param {WebSocket} ws The websocket object.
      * @returns {void}
      */
-    static connection(ws) {
-        ws.send("WebSocket connection established", {mask: false});
-    }
-
-    // MARK: static close
-    /**
-     * Handles websocket disconnections from the /ws route.
-     * @param {WebSocket} ws The websocket object.
-     * @returns {void}
-     */
-    static close(ws) {
-        ws.close();
+    static connection() {
+        throw new Error("Intentional error for testing purposes");
     }
 }
 
-module.exports = WsRoute;
+module.exports = WsErrorRoute;

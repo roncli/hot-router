@@ -32,6 +32,15 @@ class CatchAllRoute extends RouterBase {
         }
         res.status(200).send(`Catch all route response, path: ${req.path}`);
     }
+
+    // MARK: static post
+    /**
+     * Handles POST requests to this route.
+     * @returns {void}
+     */
+    static post() {
+        throw new Error("Intentional error for testing purposes");
+    }
 }
 
 module.exports = CatchAllRoute;
