@@ -23,6 +23,7 @@ class CatchAllRoute extends RouterBase {
      * Handles GET requests to this route.
      * @param {import("express").Request} req The request object.
      * @param {import("express").Response} res The response object.
+     * @param {import("express").NextFunction} next The next function.
      * @returns {void}
      */
     static get(req, res, next) {

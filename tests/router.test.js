@@ -1,5 +1,6 @@
-const createHttpError = require("http-errors");
+const HttpErrors = require("http-errors");
 const ErrorRoute = require("./errors/errorRoute");
+const Express = require("express");
 const fs = require("fs/promises");
 const request = require("supertest");
 const Router = require("../router");
@@ -14,6 +15,11 @@ if (process.env.VSCODE_INSPECTOR_OPTIONS) {
 describe("Router", () => {
     test("should be defined", () => {
         expect(Router).toBeDefined();
+    });
+
+    test("should throw if setRoutes is called without an app", async () => {
+        const router = new Router();
+        await expect(router.setRoutes("./tests/routes", null, {hot: false})).rejects.toThrow("An Express or WebSocketExpress application must be provided.");
     });
 
     // MARK: Route Integration Tests
@@ -39,13 +45,16 @@ describe("Router", () => {
                 addListener = true;
             });
 
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
-            const routers = await router.getRouters("./tests/routes", {hot: false});
-            app.use(routers.websocketRouter);
-            app.use("/", routers.webRouter);
+            await router.setRoutes("./tests/routes", app, {hot: true});
 
             server = app.listen(30000);
         });
@@ -131,7 +140,7 @@ describe("Router", () => {
             expect(addListener).toBe(false);
         });
 
-        test("should handle missing websocket route", async () => {
+        test("should handle missing web socket route", async () => {
             const ws = new WebSocket("ws://localhost:30000/unknownWs");
 
             const msg = await new Promise((resolve) => {
@@ -150,7 +159,7 @@ describe("Router", () => {
             expect(addListener).toBe(false);
         });
 
-        test("Should handle websocket error with WsErrorRoute", async () => {
+        test("Should handle web socket error with WsErrorRoute", async () => {
             const ws = new WebSocket("ws://localhost:30000/wsError");
 
             const msg = await new Promise((resolve) => {
@@ -198,7 +207,12 @@ describe("Router", () => {
 
             const router = new Router();
 
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
@@ -209,18 +223,24 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
+            /** @type {Router.RouterErrorEvent} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
             });
 
             // Trigger an error
-            app.get("/triggerError", (req, res, next) => {
+            app.get("/triggerError", (_req, _res, next) => {
                 next(new Error("Test error"));
             });
 
             // Simulate an error middleware
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
@@ -241,20 +261,26 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
+            /** @type {Router.RouterErrorEvent} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
             });
 
             // Trigger an error
-            app.get("/triggerError", (req, res, next) => {
-                const err = createHttpError(503, "Test error");
+            app.get("/triggerError", (_req, _res, next) => {
+                const err = HttpErrors(503, "Test error");
                 err.expose = true;
                 next(err);
             });
 
             // Simulate an error middleware
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
@@ -274,21 +300,27 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
+            /** @type {Router.RouterErrorEvent} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
             });
 
             // Trigger an error
-            app.get("/triggerError", (req, res, next) => {
+            app.get("/triggerError", (_req, res, next) => {
                 res.write("Headers already sent.");
-                const err = createHttpError(503, "Test error");
+                const err = HttpErrors(503, "Test error");
                 err.expose = true;
                 next(err);
             });
 
             // Simulate an error middleware
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
@@ -320,7 +352,7 @@ describe("Router", () => {
             app = new WebSocketExpress.WebSocketExpress();
 
             const router = new Router();
-            app.use("/", (await router.getRouters("./tests/routes", {hot: true})).webRouter);
+            await router.setRoutes("./tests/routes", app, {hot: true});
 
             server = app.listen(30000);
         });
@@ -364,14 +396,14 @@ describe("Router", () => {
 
             writeHeaders = false;
 
-            app.use((req, res, next) => {
+            app.use((_req, res, next) => {
                 if (writeHeaders) {
                     res.write("Headers already sent error occurred.");
                 }
                 next();
             });
 
-            app.use("/", (await router.getRouters("./tests/catchAll", {hot: true})).webRouter);
+            await router.setRoutes("./tests/catchAll", app, {hot: true});
 
             server = app.listen(30000);
         });
@@ -405,7 +437,6 @@ describe("Router", () => {
 
         test("should handle /catchAll route with error in post method", async () => {
             const response = await request(server).post("/catchAll");
-            console.log(response);
             expect(response.status).toBe(500);
             expect(response.text).toBe("HTTP 500 Server Error");
             expect(error?.message).toBe("An error occurred in post /catchAll for the catch all path.");
@@ -419,7 +450,7 @@ describe("Router", () => {
 
     // MARK: Custom Errors
     describe("Custom Errors", () => {
-        /** @type {WebSocketExpress.WebSocketExpress} */
+        /** @type {Express.Application} */
         let app;
 
         let server;
@@ -428,7 +459,7 @@ describe("Router", () => {
         beforeEach(async () => {
             error = void 0;
 
-            app = new WebSocketExpress.WebSocketExpress();
+            app = Express();
 
             const router = new Router();
 
@@ -436,9 +467,14 @@ describe("Router", () => {
                 error = data;
             });
 
-            app.use("/", (await router.getRouters("./tests/customErrors", {hot: false})).webRouter);
+            await router.setRoutes("./tests/customErrors", app, {hot: false});
 
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 
@@ -495,14 +531,19 @@ describe("Router", () => {
                 error = data;
             });
 
-            app.use((req, res, next) => {
+            app.use((_req, res, next) => {
                 res.write("Headers already sent error occurred.");
                 next();
             });
 
-            app.use("/", (await router.getRouters("./tests/routes", {hot: false})).webRouter);
+            await router.setRoutes("./tests/routes", app, {hot: false});
 
-            app.use((err, req, res, next) => {
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
                 router.error(err, req, res, next);
             });
 

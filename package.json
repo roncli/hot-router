@@ -40,6 +40,15 @@
         "node-mocks-http": "1.17.2",
         "supertest": "7.2.2"
     },
+    "files": [
+        "index.js",
+        "router.js",
+        "routerBase.js",
+        "index.d.ts",
+        "router.d.ts",
+        "routerBase.d.ts",
+        "README.md"
+    ],
     "engines": {
         "node": ">=18.14.0"
     },

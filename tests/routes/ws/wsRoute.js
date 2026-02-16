@@ -1,5 +1,5 @@
 /**
- * @typedef {import("ws").WebSocket} WebSocket
+ * @typedef {import("ws").WebSocket} WS.WebSocket
  */
 
 const RouterBase = require("../../../routerBase");
@@ -25,8 +25,8 @@ class WsRoute extends RouterBase {
 
     // MARK: static connection
     /**
-     * Handles websocket connections to the /ws route.
-     * @param {WebSocket} ws The websocket object.
+     * Handles web socket connections to the /ws route.
+     * @param {WS.WebSocket} ws The web socket object.
      * @returns {void}
      */
     static connection(ws) {
@@ -35,8 +35,8 @@ class WsRoute extends RouterBase {
 
     // MARK: static close
     /**
-     * Handles websocket disconnections from the /ws route.
-     * @param {WebSocket} ws The websocket object.
+     * Handles web socket disconnections from the /ws route.
+     * @param {WS.WebSocket} ws The web socket object.
      * @returns {void}
      */
     static close(ws) {

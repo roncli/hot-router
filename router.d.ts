@@ -1,21 +1,15 @@
 import {EventEmitter} from "events"
-import {NextFunction, Router as expressRouter} from "express"
-import {Router as wsRouter} from "websocket-express";
-
-/**
- * The event emitted when there is an error in the router.
- */
-interface RouterErrorEvent {
-    message: string;
-    err: Error;
-    req: Express.Request;
-}
+import {Application, NextFunction, Request, Response, Router as expressRouter} from "express"
+import {HttpError} from "http-errors"
+import {Router as wsRouter, WebSocketExpress} from "websocket-express"
 
 /**
  * The options for the router.
  */
 interface RouterOptions {
     hot?: boolean
+    webRoot?: string
+    webSocketRoot?: string
 }
 
 declare class Router extends EventEmitter {
@@ -25,7 +19,7 @@ declare class Router extends EventEmitter {
      * @param {function} listener The listener function.
      * @returns {this} The router instance.
      */
-    addListener(event: "error", listener: (arg: RouterErrorEvent) => void): this
+    addListener(event: "error", listener: (arg: Router.RouterErrorEvent) => void): this
 
     /**
      * Adds an error event listener.
@@ -33,26 +27,37 @@ declare class Router extends EventEmitter {
      * @param {function} listener The listener function.
      * @returns {this} The router instance.
      */
-    on(event: "error", listener: (arg: RouterErrorEvent) => void): this
+    on(event: "error", listener: (arg: Router.RouterErrorEvent) => void): this
 
     /**
      * Gets the routers to use for the website.
      * @fires Router#error
      * @param {string} routesPath The directory with the route classes.
      * @param {RouterOptions} [options] The options to use.
-     * @returns {Promise<{webRouter: expressRouter, websocketRouter?: wsRouter}>} A promise that resolves with the routers to use for the website.
+     * @returns {Promise<{webRouter: expressRouter, webSocketRouter?: wsRouter}>} A promise that resolves with the routers to use for the website.
      */
-    getRouters(routesPath: string, options?: RouterOptions): Promise<{webRouter: expressRouter, websocketRouter?: wsRouter}>
+    setRoutes(routesPath: string, app: Application | WebSocketExpress, options?: RouterOptions): Promise<{webRouter: expressRouter, webSocketRouter?: wsRouter}>
 
     /**
      * Handles a router error.
-     * @param {Error} err The error object.
-     * @param {Express.Request} req The request.
-     * @param {Express.Response} res The response.
+     * @param {HttpError} err The error object.
+     * @param {Request} req The request.
+     * @param {Response} res The response.
      * @param {NextFunction} next The function to be called if the error is not handled.
      * @returns {Promise<void>}
      */
-    error(err: Error, req: Express.Request, res: Express.Response, next: NextFunction): Promise<void>
+    error(err: HttpError, req: Request, res: Response, next: NextFunction): Promise<void>
+}
+
+declare namespace Router {
+    /**
+     * The event emitted when there is an error in the router.
+     */
+    export interface RouterErrorEvent {
+        message: string
+        err: HttpError
+        req: Request
+    }
 }
 
 export = Router

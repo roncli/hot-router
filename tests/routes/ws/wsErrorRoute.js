@@ -25,7 +25,7 @@ class WsErrorRoute extends RouterBase {
 
     // MARK: static connection
     /**
-     * Handles websocket connections to the /ws route.
+     * Handles web socket connections to the /ws route.
      * @returns {void}
      */
     static connection() {

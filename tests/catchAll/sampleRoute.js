@@ -21,11 +21,11 @@ class SampleRoute extends RouterBase {
     // MARK: static get
     /**
      * Handles GET requests to the /sample route.
-     * @param {import("express").Request} req The request object.
+     * @param {import("express").Request} _req The request object.
      * @param {import("express").Response} res The response object.
      * @returns {void}
      */
-    static get(req, res) {
+    static get(_req, res) {
         res.status(200).send("Sample route response");
     }
 }

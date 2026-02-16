@@ -1,23 +1,19 @@
 /**
- * @typedef {["error", function({message: string, err: Error, req: Express.Request}): void]} Events
- * @typedef {import("express").NextFunction} Express.NextFunction
- * @typedef {import("express").Request} Express.Request
- * @typedef {import("express").Response} Express.Response
- * @typedef {import("express").Router} Express.Router
  * @typedef {import("http-errors").HttpError} HttpErrors.HttpError
  * @typedef {import("./routerBase").InternalRoute} RouterBase.InternalRoute
  * @typedef {import("./routerBase").Route} RouterBase.Route
- * @typedef {import("websocket-express")} WebSocketExpress
- * @typedef {import("websocket-express").WSResponse} WebSocketExpress.WSResponse
+ * @typedef {["error", function({message: string, err: Error, req: Express.Request}): void]} RouterEvents
  * @typedef {import("websocket-express").Router} WebSocketExpress.Router
+ * @typedef {import("websocket-express").WebSocketExpress} WebSocketExpress.WebSocketExpress
+ * @typedef {import("websocket-express").WSResponse} WebSocketExpress.WSResponse
  */
 
 const {EventEmitter} = require("events"),
-    express = require("express"),
+    Express = require("express"),
     fs = require("fs/promises"),
     path = require("path");
 
-const wsExpress = (() => {
+const WsExpress = (() => {
     try {
         return require("websocket-express");
     } catch {
@@ -40,6 +36,54 @@ class Router extends EventEmitter {
     #methodNotAllowedFilename = "";
 
     #serverErrorFilename = "";
+
+    // MARK: async #attachErrorHandlers
+    /**
+     * Attaches error handlers to the provided router.
+     * @param {Express.Router | WebSocketExpress.Router} webRouter The router to attach the error handlers to.
+     * @returns {void}
+     */
+    #attachErrorHandlers(webRouter) {
+        // 404 remaining pages.
+        webRouter.use(async (req, res, next) => {
+            if (res.headersSent) {
+                // Clean up and end response.
+                if (!res.writableEnded) {
+                    res.end();
+                }
+                return;
+            }
+
+            if (this.#notFoundFilename !== "") {
+                const route404 = this.#routes[this.#notFoundFilename];
+                if (route404.webSocket === false) {
+                    await route404.class.get(req, res, next);
+                }
+                return;
+            }
+
+            res.status(404).send("HTTP 404 Not Found");
+        });
+
+        // 500 errors.
+        webRouter.use(async (
+            /** @type {HttpErrors.HttpError} */ err,
+            /** @type {Express.Request} */ req,
+            /** @type {Express.Response} */ res,
+            /** @type {Express.NextFunction} */ next
+        ) => {
+            if (err.status && err.status !== 500 && err.expose) {
+                res.status(err.status).send(err.message);
+            } else {
+                this.emit("error", {
+                    message: "An unhandled error has occurred.",
+                    err, req
+                });
+
+                await this.#handleServerError(req, res, next);
+            }
+        });
+    }
 
     // MARK: async #checkCache
     /**
@@ -125,6 +169,138 @@ class Router extends EventEmitter {
         }
     }
 
+    // MARK: #getWebRouter
+    /**
+     * Gets the web router to use for the website.
+     * @param {object} options The options to use.
+     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
+     * @returns {Express.Router} The web router to use for the website.
+     */
+    #getWebRouter(options) {
+        /** @type {Express.Router} */
+        const webRouter = Express.Router();
+
+        const filenames = Object.keys(this.#routes),
+            includes = filenames.filter((c) => this.#routes[c].include),
+            pages = filenames.filter((c) => !this.#routes[c].include && !this.#routes[c].webSocket && this.#routes[c].path && this.#routes[c].methods && this.#routes[c].methods.length > 0);
+
+        // Set up page routes.
+        pages.forEach((filename) => {
+            const route = this.#routes[filename];
+
+            if (route.webSocket === false) {
+                route.methods.forEach((method) => {
+                    webRouter[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
+                        if (res.headersSent) {
+                            next(new Error("Headers already sent."));
+                            return;
+                        }
+
+                        try {
+                            if (options.hot) {
+                                await this.#checkCaches(includes, filename);
+                            }
+
+                            await Router.#restCall(req, res, next, route.class);
+                        } catch (err) {
+                            this.emit("error", {
+                                message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${route.path}.`,
+                                err, req
+                            });
+                            await this.#handleServerError(req, res, next);
+                        }
+                    });
+                });
+
+                // Add a fallback for unsupported methods
+                webRouter.all(route.path, async (req, res, next) => {
+                    await this.#handleMethodNotAllowed(req, res, next);
+                });
+            }
+        });
+
+        // Use a catch all route if it is setup.
+        if (this.#catchAllFilename !== "") {
+            const routeCatchAll = this.#routes[this.#catchAllFilename];
+            if (routeCatchAll.webSocket === false) {
+                webRouter.use(...routeCatchAll.middleware, async (req, res, next) => {
+                    if (res.headersSent) {
+                        next(new Error("Headers already sent."));
+                        return;
+                    }
+
+                    try {
+                        if (options.hot) {
+                            await this.#checkCaches(includes, this.#catchAllFilename);
+                        }
+
+                        await Router.#restCall(req, res, next, routeCatchAll.class);
+                    } catch (err) {
+                        this.emit("error", {
+                            message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for the catch all path.`,
+                            err, req
+                        });
+                        await this.#handleServerError(req, res, next);
+                    }
+                });
+            }
+        }
+
+        return webRouter;
+    }
+
+    // MARK: async #getWebSocketRouter
+    /**
+     * Gets the web socket router to use for the website.
+     * @param {object} options The options to use.
+     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
+     * @returns {WebSocketExpress.Router | undefined} The web socket router to use for the website.
+     */
+    #getWebSocketRouter(options) {
+        const webSocketRouter = WsExpress ? new WsExpress.Router() : void 0;
+
+        const filenames = Object.keys(this.#routes),
+            webSockets = filenames.filter((c) => this.#routes[c].webSocket);
+
+        // Set up web socket routes.
+        webSockets.forEach((filename) => {
+            const route = this.#routes[filename];
+
+            if (route.webSocket) {
+                if (WsExpress && webSocketRouter instanceof WsExpress.Router) {
+                    webSocketRouter.ws(route.path, ...route.middleware, async (req, res) => {
+                        const ws = await res.accept();
+
+                        route.events.forEach((event) => {
+                            ws.on(event === "connection" ? "_init" : event, async (...args) => {
+                                if (route.webSocket) {
+                                    try {
+                                        if (options.hot) {
+                                            await this.#checkCaches([], filename);
+                                        }
+
+                                        await route.class[event](ws, ...args);
+                                    } catch (err) {
+                                        ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
+                                        this.emit("error", {
+                                            message: "An unhandled WebSocket error has occurred.",
+                                            err, req
+                                        });
+                                    }
+                                }
+                            });
+                        });
+
+                        // Since the connection event is not re-fired, we use the _init event to forward the connection event to the client.
+                        ws.emit("_init", req);
+                    });
+                }
+            }
+        });
+
+        return webSocketRouter;
+    }
+
     // MARK: async #handleMethodNotAllowed
     /**
      * Handles a 405 Method Not Allowed error.
@@ -194,175 +370,11 @@ class Router extends EventEmitter {
     // MARK: addListener
     /**
      * Adds a listener.
-     * @param {Events} args The arguments.
+     * @param {RouterEvents} args The arguments.
      * @returns {this} The return.
      */
     addListener(...args) {
         return super.addListener(...args);
-    }
-
-    // MARK: on
-    /**
-     * Adds a listener.
-     * @param {Events} args The arguments.
-     * @returns {this} The return.
-     */
-    on(...args) {
-        return super.on(...args);
-    }
-
-    // MARK: async getRouters
-    /**
-     * Gets the routers to use for the website.
-     * @param {string} routesPath The directory with the route classes.
-     * @param {object} [options] The options to use.
-     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
-     * @returns {Promise<{webRouter: Express.Router, websocketRouter?: WebSocketExpress.Router}>} A promise that resolves with the router to use for the website.
-     */
-    async getRouters(routesPath, options) {
-        options = {...{hot: false}, ...options || {}};
-
-        await this.#getClasses(routesPath);
-
-        /** @type {WebSocketExpress.Router | Express.Router} */
-        const webRouter = express.Router();
-        const websocketRouter = wsExpress ? new wsExpress.Router() : void 0;
-
-        const filenames = Object.keys(this.#routes),
-            includes = filenames.filter((c) => this.#routes[c].include),
-            webSockets = filenames.filter((c) => this.#routes[c].webSocket),
-            pages = filenames.filter((c) => !this.#routes[c].include && !this.#routes[c].webSocket && this.#routes[c].path && this.#routes[c].methods && this.#routes[c].methods.length > 0);
-
-        // Set up websocket routes.
-        webSockets.forEach((filename) => {
-            const route = this.#routes[filename];
-
-            if (route.webSocket) {
-                if (wsExpress && websocketRouter instanceof wsExpress.Router) {
-                    websocketRouter.ws(route.path, ...route.middleware, async (req, res) => {
-                        const ws = await res.accept();
-
-                        route.events.forEach((event) => {
-                            ws.on(event === "connection" ? "_init" : event, (...args) => {
-                                if (route.webSocket) {
-                                    try {
-                                        route.class[event](ws, ...args);
-                                    } catch (err) {
-                                        ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
-                                        this.emit("error", {
-                                            message: "An unhandled WebSocket error has occurred.",
-                                            err, req
-                                        });
-                                    }
-                                }
-                            });
-                        });
-
-                        // Since the connection event is not re-fired, we use the _init event to forward the connection event to the client.
-                        ws.emit("_init", req);
-                    });
-                }
-            }
-        });
-
-        // Set up page routes.
-        pages.forEach((filename) => {
-            const route = this.#routes[filename];
-
-            if (route.webSocket === false) {
-                route.methods.forEach((method) => {
-                    webRouter[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
-                        if (res.headersSent) {
-                            next(new Error("Headers already sent."));
-                            return;
-                        }
-
-                        try {
-                            if (options.hot) {
-                                await this.#checkCaches(includes, filename);
-                            }
-
-                            await Router.#restCall(req, res, next, route.class);
-                        } catch (err) {
-                            this.emit("error", {
-                                message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for ${route.path}.`,
-                                err, req
-                            });
-                            await this.#handleServerError(req, res, next);
-                        }
-                    });
-                });
-
-                // Add a fallback for unsupported methods
-                webRouter.all(route.path, async (req, res, next) => {
-                    await this.#handleMethodNotAllowed(req, res, next);
-                });
-            }
-        });
-
-        // Use a catch all route if it is setup.
-        if (this.#catchAllFilename !== "") {
-            const routeCatchAll = this.#routes[this.#catchAllFilename];
-            if (routeCatchAll.webSocket === false) {
-                webRouter.use(...routeCatchAll.middleware, async (req, res, next) => {
-                    if (res.headersSent) {
-                        next(new Error("Headers already sent."));
-                        return;
-                    }
-
-                    try {
-                        if (options.hot) {
-                            await this.#checkCaches(includes, this.#catchAllFilename);
-                        }
-
-                        await Router.#restCall(req, res, next, routeCatchAll.class);
-                    } catch (err) {
-                        this.emit("error", {
-                            message: `An error occurred in ${req.method.toLowerCase()} ${req.url} for the catch all path.`,
-                            err, req
-                        });
-                        await this.#handleServerError(req, res, next);
-                    }
-                });
-            }
-        }
-
-        // 404 remaining pages.
-        webRouter.use(async (req, res, next) => {
-            if (res.headersSent) {
-                // Clean up and end response.
-                if (!res.writableEnded) {
-                    res.end();
-                }
-                return;
-            }
-
-            if (this.#notFoundFilename !== "") {
-                const route404 = this.#routes[this.#notFoundFilename];
-                if (route404.webSocket === false) {
-                    await route404.class.get(req, res, next);
-                }
-                return;
-            }
-
-            res.status(404).send("HTTP 404 Not Found");
-        });
-
-        // 500 errors.
-        webRouter.use(async (err, req, res, next) => {
-            if (err.status && err.status !== 500 && err.expose) {
-                res.status(err.status).send(err.message);
-            } else {
-                this.emit("error", {
-                    message: "An unhandled error has occurred.",
-                    err, req
-                });
-
-                await this.#handleServerError(req, res, next);
-            }
-        });
-
-        return {webRouter, websocketRouter};
     }
 
     // MARK: async error
@@ -392,6 +404,48 @@ class Router extends EventEmitter {
             });
 
             await this.#handleServerError(req, res, next);
+        }
+    }
+
+    // MARK: on
+    /**
+     * Adds a listener.
+     * @param {RouterEvents} args The arguments.
+     * @returns {this} The return.
+     */
+    on(...args) {
+        return super.on(...args);
+    }
+
+    // MARK: async setRoutes
+    /**
+     * Sets the routes for the website.
+     * @param {string} routesPath The directory with the route classes.
+     * @param {Express.Application | WebSocketExpress.WebSocketExpress} app The Express application to use for the routers.
+     * @param {object} [options] The options to use.
+     * @param {boolean} [options.hot] Whether to use hot reloading for RouterBase classes.  Defaults to true.
+     * @param {string} [options.webRoot] The root path to use for the web router.  Defaults to "/".
+     * @param {string} [options.webSocketRoot] The root path to use for the web socket router.  Defaults to "/".
+     * @returns {Promise<void>}
+     */
+    async setRoutes(routesPath, app, options) {
+        if (!app) {
+            throw new Error("An Express or WebSocketExpress application must be provided.");
+        }
+
+        options = {...{hot: false, webRoot: "/", webSocketRoot: "/"}, ...options || {}};
+
+        await this.#getClasses(routesPath);
+
+        const webSocketRouter = this.#getWebSocketRouter(options);
+        const webRouter = this.#getWebRouter(options);
+        this.#attachErrorHandlers(webRouter);
+
+        if (WsExpress && app instanceof WsExpress.WebSocketExpress) {
+            app.use(options.webSocketRoot, webSocketRouter);
+            app.useHTTP(options.webRoot, webRouter);
+        } else {
+            /** @type {Express.Application} */(app).use(options.webRoot, webRouter); // eslint-disable-line @stylistic/no-extra-parens
         }
     }
 }

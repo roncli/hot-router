@@ -21,11 +21,11 @@ class HeadRoute extends RouterBase {
     // MARK: static head
     /**
      * Handles HEAD requests to the /head route.
-     * @param {import("express").Request} req The request object.
+     * @param {import("express").Request} _req The request object.
      * @param {import("express").Response} res The response object.
      * @returns {void}
      */
-    static head(req, res) {
+    static head(_req, res) {
         res.status(200).end();
     }
 }

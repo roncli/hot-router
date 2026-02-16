@@ -1,8 +1,8 @@
-import { NextFunction, Request, RequestHandler, Response } from "express"
-import { IncomingMessage } from "http"
-import { Duplex } from "stream"
-import { WebSocket } from "ws"
-import { WSRequestHandler } from "websocket-express"
+import {NextFunction, Request, RequestHandler, Response} from "express"
+import {IncomingMessage} from "http"
+import {Duplex} from "stream"
+import {WebSocket} from "ws"
+import {WSRequestHandler} from "websocket-express"
 
 declare namespace RouterBase {
     interface BaseRoute {
@@ -22,7 +22,7 @@ declare namespace RouterBase {
         methods: string[]
     }
 
-    interface InternalWebsocketRoute extends InternalBaseRoute {
+    interface InternalWebSocketRoute extends InternalBaseRoute {
         webSocket: true
         middleware: WSRequestHandler[]
         class?: RouterBase & {
@@ -43,9 +43,9 @@ declare namespace RouterBase {
         }
     }
 
-    type InternalRoute = InternalWebsocketRoute | InternalWebRoute
+    type InternalRoute = InternalWebSocketRoute | InternalWebRoute
 
-    interface WebsocketRoute extends BaseRoute {
+    interface WebSocketRoute extends BaseRoute {
         webSocket: true
         middleware: WSRequestHandler[]
     }
@@ -55,7 +55,7 @@ declare namespace RouterBase {
         middleware: RequestHandler[]
     }
 
-    export type Route = WebsocketRoute | WebRoute
+    export type Route = WebSocketRoute | WebRoute
 }
 
 declare abstract class RouterBase {

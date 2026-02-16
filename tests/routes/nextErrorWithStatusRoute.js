@@ -4,7 +4,7 @@
  * @typedef {import("express").NextFunction} NextFunction
  */
 
-const createHttpError = require("http-errors");
+const HttpErrors = require("http-errors");
 const RouterBase = require("../../routerBase");
 
 // MARK: class NextErrorWithStatusRoute
@@ -28,13 +28,13 @@ class NextErrorWithStatusRoute extends RouterBase {
     // MARK: static get
     /**
      * Handles GET requests to the /nextErrorWithStatus route.
-     * @param {Request} req The request object.
-     * @param {Response} res The response object.
+     * @param {Request} _req The request object.
+     * @param {Response} _res The response object.
      * @param {NextFunction} next The next function to call.
      * @returns {void}
      */
-    static get(req, res, next) {
-        const error = createHttpError(503, "Intentional error for testing purposes passed to middleware");
+    static get(_req, _res, next) {
+        const error = HttpErrors(503, "Intentional error for testing purposes passed to middleware");
         error.expose = true;
         next(error);
     }

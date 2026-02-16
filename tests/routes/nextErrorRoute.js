@@ -27,12 +27,12 @@ class NextErrorRoute extends RouterBase {
     // MARK: static get
     /**
      * Handles GET requests to the /nextError route.
-     * @param {Request} req The request object.
-     * @param {Response} res The response object.
+     * @param {Request} _req The request object.
+     * @param {Response} _res The response object.
      * @param {NextFunction} next The next function to call.
      * @returns {void}
      */
-    static get(req, res, next) {
+    static get(_req, _res, next) {
         const error = new Error("Intentional error for testing purposes passed to middleware");
         next(error);
     }

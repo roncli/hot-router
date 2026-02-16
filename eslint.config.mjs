@@ -33,7 +33,7 @@ export default [
             "max-lines-per-function": "off",
             "max-params": "off",
             "max-statements": "off",
-            "new-cap": ["error", {"properties": false}],
+            "new-cap": ["error", {"properties": false, "capIsNewExceptions": ["Express", "HttpErrors"]}],
             "no-console": "off",
             "no-continue": "off",
             "no-inline-comments": "off",

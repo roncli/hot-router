@@ -2,23 +2,23 @@
 A router for Express that lets you set up route classes to easily create routes.  For development, it can also be set up to hot swap the code inside your route classes while your application is running.
 
 ## Prerequisites
-hot-router is designed to work with Express, so Express is required in your project.  You may also optionally install websocket-express if you wish to use hot-router with web sockets in Express.
+`hot-router` is designed to work with Express, so `express` is required in your project.  You may also optionally install `websocket-express` if you wish to use `hot-router` with web sockets in Express.
 
 ## Installing
-Use npm to install.
+Use `npm` to install.
 
 ```
 npm install hot-router
 ```
 
-If you are using websocket-express, you will need to install all of these dependencies as well.
+If you are using `websocket-express`, you will need to install all of these dependencies as well.
 
 ```
 npm install websocket-express ws @types/express @types/ws
 ```
 
 ## Usage
-To use hot-router, there are two steps.  First, you must hook up hot-router as a router in Express, pointing at the directory that will contain your routes.  Second, you need to create route classes for hot-router to use.
+To use `hot-router`, there are two steps.  First, you must hook up `hot-router` as a router in Express, pointing at the directory that will contain your routes.  Second, you need to create route classes for `hot-router` to use.
 
 ### Quick Setup
 
@@ -28,13 +28,13 @@ To use hot-router, there are two steps.  First, you must hook up hot-router as a
 const path = require("path");
 
 // Require express.
-const express = require("express");
+const Express = require("express");
 
 // Require hot-router.
 const HotRouter = require("hot-router");
 
 // Create a new Express app.
-const app = express();
+const app = Express();
 
 // Create a new router object.
 const router = new HotRouter.Router();
@@ -47,12 +47,8 @@ router.on("error", (data) => {
 (async () => {
     // Use the router with Express.
     try {
-        app.use(
-            "/",
-
-            // The parameter is the absolute path of the directory that will contain the route classes.
-            await router.getRouter(path.join(__dirname, "web"))
-        );
+        // The first parameter is the absolute path of the directory that will contain the route classes.
+        await router.setRoutes(path.join(__dirname, "web"), app);
     } catch (err) {
         console.log(`There was an error setting up the routes!  error message: ${err.message}`);
     }
@@ -110,25 +106,25 @@ The constructor has no parameters.
 const router = new HotRouter.Router();
 ```
 
-#### Getting the Router for Express
-To get the route, you call the `getRouter()` method of the `router` object.  This call takes these parameters.
+#### Setting up the routes
+To setup the routes, you call the `setRoutes()` method of the `router` object.  This call takes these parameters.
 
 | Parameter | Type | Description |
 |---|---|---|
 | **path** | _string_ | The absolute path to the directory containing the route classes. |
+| **app** | _Express.Application \| WebSocketExpress_ | The Express or WebSocketExpress app to use. |
 | **options** | _object_ | _Optional._  The options to use. |
 | **options.hot** | _boolean_ | _Optional._  Defaults to false.  Whether to use hot routes.  Hot routes allow you to change code in the route while your application is running at the cost of a small memory leak every time a route is updated.  **Therefore, this is not recommended to be set to `true` in production environments.**  Note that this only applies to routes that existed when you started the application.  You still will need to restart your application to add or remove any route classes. |
+| **options.webRoot** | _string_ | _Optional._  Defaults to "/".  The root path to use for the web router.  This is useful if you want to have your web routes under a certain path, for instance if you want all of your web routes to be under `/web` instead of at the top level. |
+| **options.webSocketRoot** | _string_ | _Optional._  Defaults to "/".  The root path to use for the web socket router.  This is useful if you want to have your web socket routes under a certain path, for instance if you want all of your web socket routes to be under `/ws` instead of at the top level. |
 
 ##### Returns
-_Promise<Express.Router>_ - A promise with an Express router object that you can plug into Express.
+_Promise<void>_ - A promise that resolves when the routes have been set up.
 
 ```javascript
 const router = new HotRouter.Router();
 
-app.use(
-    "/",
-    await router.getRouter(path.join(__dirname, "web"), {hot: true})
-);
+await router.setRoutes(path.join(__dirname, "web"), app, {hot: true, webRoot: "/web", webSocketRoot: "/ws"});
 
 app.use((err, req, res, next) => {
     router.error(err, req, res, next);
@@ -140,7 +136,7 @@ There is one event, the `error` event.  The event returns an object that has the
 
 | Property | Type | Description |
 |---|---|---|
-| **message** | _string_ | The error message describing what action hot-router was taking when the error occurred. |
+| **message** | _string_ | The error message describing what action `hot-router` was taking when the error occurred. |
 | **err** | _error_ | The error object.  This is the error that triggered the event. |
 | **req** | _Express.Request_ | The request object.  This is the request that caused the error. |
 
@@ -171,7 +167,7 @@ Customize your route by extending the RouterBase class's route property.  The ea
 | notFound | _boolean_ | `false` | Marks the file as one that handles HTTP 404 Not Found requests.  This is called when no routes match.  Useful for overriding the default 404 web page. |
 | methodNotAllowed | _boolean_ | `false` | Marks the file as one that handles HTTP 405 Method Not Allowed requests.  This is called when an HTTP method is used with a route class that does not have that method defined as a function.  Useful for overriding the default 405 web page. |
 | serverError | _boolean_ | `false` | Marks the file as one that handles HTTP 500 Server Error requests.  This is called when something within node.js throws an error before it can successfully handle a request.  Useful for overriding the default 500 web page. |
-| middleware | _RequestHandler[] \| WSRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both express and websocket-express middleware, depending on the value of `webSocket`. |
+| middleware | _RequestHandler[] \| WSRequestHandler[]_ | `[]` | An array of middleware that will apply only to this route. Can handle both `express` and `websocket-express` middleware, depending on the value of `webSocket`. |
 
 You should only ever need to define at most *one* of the properties of `path`, `include`, `notFound`, `methodNotAllowed`, and `serverError`, with one exception: you need to define both `path` and `webSocket` to create a web socket route class.  There are other properties on the default route object that are not listed here, which should be considered internal properties.
 
@@ -193,7 +189,7 @@ In this case, we have created a route for the top level page of the website, `/`
 #### Basic Route Class
 A basic route class will override the path property and define one or more static methods that are the same as HTTP methods, only in lower case.
 
-This example requires the use of `app.use(express.urlencoded({extended: true}));` when starting up Express.
+This example requires the use of `app.use(Express.urlencoded({extended: true}));` when starting up Express.
 
 ```javascript
 class Login extends HotRouter.RouterBase {
@@ -295,9 +291,9 @@ class MasterPage extends HotRouter.Home {
 ```
 
 #### Web Socket Route Class
-When used in conjunction with websocket-express, you can use hot-router to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since websocket-express is based on the ws library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
+When used in conjunction with `websocket-express`, you can use `hot-router` to create web socket route classes.  Instead of overriding HTTP methods, you instead are overriding web socket events.  Since `websocket-express` is based on the `ws` library, you can view the server events available, and thus the parameters to the methods you will need, at [https://github.com/websockets/ws/blob/master/doc/ws.md](https://github.com/websockets/ws/blob/master/doc/ws.md).  The most common events you will use are `connection` and `close`.
 
-Here is an example of a simple websocket setup that gives your app a static function that will broadcast to all currently connected websocket users.  This example requires that websocket-express is setup prior to getting the Express router from hot-router.
+Here is an example of a simple web socket setup that gives your app a static function that will broadcast to all currently connected web socket users.  This example requires that `websocket-express` is setup prior to getting the Express router from `hot-router`.
 
 ##### ws.js
 ```javascript
@@ -347,7 +343,7 @@ class HomeWS extends HotRouter.Home {
 ```
 
 #### Error Pages
-hot-router provides default error pages for HTTP 404 Not Found, HTTP 405 Method Not Allowed, and HTTP 500 Server Error pages.  You can override these in the route by setting the corresponding property to true.  You do not need to give any of these pages a path.
+`hot-router` provides default error pages for HTTP 404 Not Found, HTTP 405 Method Not Allowed, and HTTP 500 Server Error pages.  You can override these in the route by setting the corresponding property to true.  You do not need to give any of these pages a path.
 
 Here is an example of a custom 404 page.
 
