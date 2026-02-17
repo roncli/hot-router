@@ -369,6 +369,13 @@ class NotFound extends HotRouter.Home {
 
 ## Versions
 
+### v2.0.0 Beta 7 - 2/16/2026
+* Breaking change: Changed `getRouter` method to `setRoutes`.  This method now also takes the Express or WebSocketExpress app as a parameter and sets up the routes on it, instead of returning a router that you have to plug into the app yourself.  You can also now pass the `webRoot` and `webSocketRoot` options to this method, which will set the root path for the web and web socket routes, respectively.
+* Require node.js 18.14.0.
+* Various bug fixes of edge cases.
+* Near-complete unit tests.
+* Package updates.
+
 ### v2.0.0 Beta 6 - 10/5/2025
 * Fix bug with HEAD request not working correctly when there is no HEAD method defined in the route class.
 
@@ -393,7 +400,7 @@ class NotFound extends HotRouter.Home {
 * Upgrade to `express` v5.
 * Replace `express-ws` with `websocket-express`, which supports `express` v5.
 * Removed some internals of `RouterBase` from the default `route` property.
-* Implement basic 404 (4404) and 500 (1011) websocket routes.
+* Implement basic 404 (4404) and 500 (1011) web socket routes.
 
 ### v1.0.4 - 3/29/2025
 * Improve typings.
