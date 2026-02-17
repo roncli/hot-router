@@ -1,11 +1,11 @@
-const HttpErrors = require("http-errors");
-const ErrorRoute = require("./errors/errorRoute");
-const Express = require("express");
-const fs = require("fs/promises");
-const request = require("supertest");
-const Router = require("../router");
-const WebSocket = require("ws");
-const WebSocketExpress = require("websocket-express");
+const ErrorRoute = require("./errors/errorRoute"),
+    Express = require("express"),
+    fs = require("fs/promises"),
+    HttpErrors = require("http-errors"),
+    request = require("supertest"),
+    Router = require("../router"),
+    WebSocket = require("ws"),
+    WebSocketExpress = require("websocket-express");
 
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
     jest.setTimeout(60 * 1000 * 60);
