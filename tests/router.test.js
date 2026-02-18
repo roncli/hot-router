@@ -1,29 +1,66 @@
+/**
+ * @typedef {import("../router").RouterErrorEvent} Router.RouterErrorEvent
+ * @typedef {import("websocket-express").WebSocketExpress} WebSocketExpress.WebSocketExpress
+ */
+
 const ErrorRoute = require("./errors/errorRoute"),
     Express = require("express"),
     fs = require("fs/promises"),
     HttpErrors = require("http-errors"),
     request = require("supertest"),
-    Router = require("../router"),
-    WebSocket = require("ws"),
-    WebSocketExpress = require("websocket-express");
+    WebSocket = require("ws");
 
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
     jest.setTimeout(60 * 1000 * 60);
 }
 
+/** @type {typeof import("../router")} */
+let Router;
+
+/** @type {typeof import("websocket-express")} */
+let WebSocketExpress;
+
 // MARK: Router
 describe("Router", () => {
-    test("should be defined", () => {
-        expect(Router).toBeDefined();
+    beforeEach(() => {
+        jest.resetModules();
+        Router = require("../router");
+        WebSocketExpress = require("websocket-express");
     });
 
-    test("should throw if setRoutes is called without an app", async () => {
-        const router = new Router();
-        await expect(router.setRoutes("./tests/routes", null, {hot: false})).rejects.toThrow("An Express or WebSocketExpress application must be provided.");
+    // MARK: Setup
+    describe("Setup", () => {
+        test("should be defined", () => {
+            expect(Router).toBeDefined();
+        });
+
+        test("should throw if setRoutes is called without an app", async () => {
+            const router = new Router();
+            await expect(router.setRoutes("./tests/routes", null, {hot: false})).rejects.toThrow("An Express or WebSocketExpress application must be provided.");
+        });
+
+        test("should still work if websocket-express is missing", async () => {
+            jest.resetModules();
+            // Mock websocket-express to simulate it being missing
+            jest.mock("websocket-express", () => {
+                throw new Error("Cannot find module 'websocket-express'");
+            });
+            Router = require("../router");
+            const router = new Router();
+            const app = Express();
+            await expect(router.setRoutes("./tests/routes", app, {hot: false})).resolves.toBeUndefined();
+            jest.dontMock("websocket-express");
+        });
+
+        test("should still work without options", async () => {
+            const router = new Router();
+            const app = Express();
+            await expect(router.setRoutes("./tests/routes", app)).resolves.toBeUndefined();
+        });
     });
 
-    // MARK: Route Integration Tests
-    describe("Route Integration Tests", () => {
+    // MARK: Route Integration Tests with Hot Reloading
+    describe("Route Integration Tests with Hot Reloading", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
 
@@ -55,6 +92,179 @@ describe("Router", () => {
             });
 
             await router.setRoutes("./tests/routes", app, {hot: true});
+
+            server = app.listen(30000);
+        });
+
+        test("should handle /sample with SampleRoute", async () => {
+            const response = await request(server).get("/sample");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Sample route response");
+        });
+
+        test("should handle HEAD /sample with SampleRoute", async () => {
+            const response = await request(server).head("/sample");
+            expect(response.status).toBe(200);
+            expect(response.text).toBeUndefined();
+        });
+
+        test("should handle /headers with HeadersRoute", async () => {
+            const response = await request(server).get("/headers");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Headers route response");
+        });
+
+        test("should handle /head with HeadRoute", async () => {
+            const response = await request(server).head("/head");
+            expect(response.status).toBe(200);
+            expect(response.text).toBeUndefined();
+        });
+
+        test("should 404 for unknown route", async () => {
+            const response = await request(server).get("/unknown");
+            expect(response.status).toBe(404);
+            expect(response.text).toBe("HTTP 404 Not Found");
+        });
+
+        test("should 405 for post to /sample", async () => {
+            const response = await request(server).post("/sample");
+            expect(response.status).toBe(405);
+            expect(response.text).toBe("HTTP 405 Method Not Allowed");
+        });
+
+        test("should handle /fail with FailRoute", async () => {
+            const response = await request(server).get("/fail");
+            expect(response.status).toBe(500);
+            expect(response.text).toBe("HTTP 500 Server Error");
+            expect(error?.message).toBe("An error occurred in get /fail for /fail.");
+            expect(error?.err?.message).toBe("Intentional error for testing purposes");
+            expect(addListener).toBe(true);
+        });
+
+        test("should handle /nextError with NextErrorRoute", async () => {
+            const response = await request(server).get("/nextError");
+            expect(response.status).toBe(500);
+            expect(response.text).toBe("HTTP 500 Server Error");
+            expect(error?.message).toBe("An unhandled error has occurred.");
+            expect(error?.err?.message).toBe("Intentional error for testing purposes passed to middleware");
+            expect(addListener).toBe(true);
+        });
+
+        test("should handle /nextErrorWithStatus with nextErrorWithStatus", async () => {
+            const response = await request(server).get("/nextErrorWithStatus");
+            expect(response.status).toBe(503);
+            expect(response.text).toBe("Intentional error for testing purposes passed to middleware");
+            expect(error).toBeUndefined();
+            expect(addListener).toBe(false);
+        });
+
+        test("should handle /ws with WsRoute", async () => {
+            const ws = new WebSocket("ws://localhost:30000/ws");
+
+            const msg = await new Promise((resolve) => {
+                ws.on("message", (message) => {
+                    resolve(message);
+                });
+
+                ws.on("error", (err) => {
+                    resolve(err);
+                });
+            });
+
+            ws.close();
+
+            expect(msg.toString()).toBe("WebSocket connection established");
+            expect(addListener).toBe(false);
+        });
+
+        test("should handle missing web socket route", async () => {
+            const ws = new WebSocket("ws://localhost:30000/unknownWs");
+
+            const msg = await new Promise((resolve) => {
+                ws.on("message", (message) => {
+                    resolve(message);
+                });
+
+                ws.on("error", (err) => {
+                    resolve(err);
+                });
+            });
+
+            ws.close();
+
+            expect(msg.toString()).toBe("Error: Unexpected server response: 404");
+            expect(addListener).toBe(false);
+        });
+
+        test("Should handle web socket error with WsErrorRoute", async () => {
+            const ws = new WebSocket("ws://localhost:30000/wsError");
+
+            const msg = await new Promise((resolve) => {
+                ws.on("message", (message) => {
+                    resolve(message);
+                });
+
+                ws.on("error", (err) => {
+                    resolve(err);
+                });
+            });
+
+            ws.close();
+
+            expect(msg.toString()).toBe("{\"error\":\"An unhandled error has occurred.\"}");
+            expect(addListener).toBe(true);
+        });
+
+        test("should handle missing route with ErrorRoute", () => {
+            expect(() => ErrorRoute.route).toThrow("You must implement the route property for ErrorRoute.");
+        });
+
+        test("should handle regex route", async () => {
+            const response = await request(server).get("/this/is/a/directory/");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Directory route response: /this/is/a/directory/");
+            expect(error).toBeUndefined();
+            expect(addListener).toBe(false);
+        });
+
+        afterEach(async () => {
+            await server.close();
+        });
+    });
+
+    // MARK: Route Integration Tests without Hot Reloading
+    describe("Route Integration Tests without Hot Reloading", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
+        let app;
+
+        let server;
+        let error;
+        let addListener;
+
+        beforeEach(async () => {
+            error = void 0;
+            addListener = false;
+
+            app = new WebSocketExpress.WebSocketExpress();
+
+            const router = new Router();
+            router.on("error", (data) => {
+                error = data;
+            });
+            router.addListener("error", () => {
+                addListener = true;
+            });
+
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
+                router.error(err, req, res, next);
+            });
+
+            await router.setRoutes("./tests/routes", app, {hot: false});
 
             server = app.listen(30000);
         });
@@ -336,6 +546,47 @@ describe("Router", () => {
             errorSpy.mockRestore(); // Restore the original method
         });
 
+        test("should call router.error after res.end() when an error with custom status occurs when headers have already been sent", async () => {
+            const router = new Router();
+            const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
+
+            /** @type {Router.RouterErrorEvent} */
+            let error = void 0;
+            router.on("error", (data) => {
+                error = data;
+            });
+
+            // Trigger an error
+            app.get("/triggerError", (_req, res, next) => {
+                res.write("Headers already sent.");
+                res.end();
+                const err = HttpErrors(503, "Test error");
+                err.expose = true;
+                next(err);
+            });
+
+            // Simulate an error middleware
+            app.use((
+                /** @type {HttpErrors.HttpError} */ err,
+                /** @type {Express.Request} */ req,
+                /** @type {Express.Response} */ res,
+                /** @type {Express.NextFunction} */ next
+            ) => {
+                router.error(err, req, res, next);
+            });
+
+            const response = await request(server).get("/triggerError");
+
+            // Assert that the error method was called
+            expect(errorSpy).toHaveBeenCalled();
+            expect(errorSpy.mock.calls[0][0].message).toBe("Test error");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Headers already sent.");
+            expect(error).toBeUndefined();
+
+            errorSpy.mockRestore(); // Restore the original method
+        });
+
         afterEach(async () => {
             await server.close();
         });
@@ -376,8 +627,94 @@ describe("Router", () => {
         });
     });
 
-    // MARK: Catch All Routes
-    describe("Catch All Routes", () => {
+    // MARK: Catch All Routes with Hot Reloading
+    describe("Catch All Routes with Hot Reloading", () => {
+        /** @type {WebSocketExpress.WebSocketExpress} */
+        let app;
+
+        let server;
+        let writeHeaders;
+        let endResponse;
+        let error;
+
+        beforeEach(async () => {
+            app = new WebSocketExpress.WebSocketExpress();
+
+            const router = new Router();
+
+            router.on("error", (data) => {
+                error = data;
+            });
+
+            writeHeaders = false;
+
+            app.use((_req, res, next) => {
+                if (writeHeaders) {
+                    res.write("Headers already sent error occurred.");
+                    if (endResponse) {
+                        res.end();
+                    }
+                }
+                next();
+            });
+
+            await router.setRoutes("./tests/catchAll", app, {hot: true});
+
+            server = app.listen(30000);
+        });
+
+        test("should handle /sample route", async () => {
+            const response = await request(server).get("/sample");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Sample route response");
+        });
+
+        test("should handle /catchAll route", async () => {
+            const response = await request(server).get("/catchAll");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Catch all route response, path: /catchAll");
+        });
+
+        test("should 404 the /404 route", async () => {
+            const response = await request(server).get("/404");
+            expect(response.status).toBe(404);
+            expect(response.text).toBe("HTTP 404 Not Found");
+        });
+
+        test("should handle /catchAll route with headers already sent", async () => {
+            writeHeaders = true;
+            const response = await request(server).get("/catchAll");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Headers already sent error occurred.");
+            expect(error?.message).toBe("An unhandled error has occurred.");
+            expect(error?.err?.message).toBe("Headers already sent.");
+        });
+
+        test("should handle /catchAll route with headers already sent and res.end() called", async () => {
+            writeHeaders = true;
+            endResponse = true;
+            const response = await request(server).get("/catchAll");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Headers already sent error occurred.");
+            expect(error?.message).toBe("An unhandled error has occurred.");
+            expect(error?.err?.message).toBe("Headers already sent.");
+        });
+
+        test("should handle /catchAll route with error in post method", async () => {
+            const response = await request(server).post("/catchAll");
+            expect(response.status).toBe(500);
+            expect(response.text).toBe("HTTP 500 Server Error");
+            expect(error?.message).toBe("An error occurred in post /catchAll for the catch all path.");
+            expect(error?.err?.message).toBe("Intentional error for testing purposes");
+        });
+
+        afterEach(async () => {
+            await server.close();
+        });
+    });
+
+    // MARK: Catch All Routes without Hot Reloading
+    describe("Catch All Routes without Hot Reloading", () => {
         /** @type {WebSocketExpress.WebSocketExpress} */
         let app;
 
@@ -403,7 +740,7 @@ describe("Router", () => {
                 next();
             });
 
-            await router.setRoutes("./tests/catchAll", app, {hot: true});
+            await router.setRoutes("./tests/catchAll", app, {hot: false});
 
             server = app.listen(30000);
         });
@@ -519,6 +856,7 @@ describe("Router", () => {
 
         let server;
         let error;
+        let endResponse;
 
         beforeEach(async () => {
             error = void 0;
@@ -533,6 +871,9 @@ describe("Router", () => {
 
             app.use((_req, res, next) => {
                 res.write("Headers already sent error occurred.");
+                if (endResponse) {
+                    res.end();
+                }
                 next();
             });
 
@@ -559,6 +900,14 @@ describe("Router", () => {
         });
 
         test("should handle 404 when headers have already been sent", async () => {
+            const response = await request(server).get("/not-found");
+            expect(response.status).toBe(200);
+            expect(response.text).toBe("Headers already sent error occurred.");
+            expect(error).toBeUndefined();
+        });
+
+        test("should handle 404 when headers have already been sent and res.end() is called", async () => {
+            endResponse = true;
             const response = await request(server).get("/not-found");
             expect(response.status).toBe(200);
             expect(response.text).toBe("Headers already sent error occurred.");

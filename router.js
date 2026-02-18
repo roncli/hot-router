@@ -56,6 +56,7 @@ class Router extends EventEmitter {
 
             if (this.#notFoundFilename !== "") {
                 const route404 = this.#routes[this.#notFoundFilename];
+                /* istanbul ignore else - We're only using the if for type narrowing. */
                 if (route404.webSocket === false) {
                     await route404.class.get(req, res, next);
                 }
@@ -188,6 +189,7 @@ class Router extends EventEmitter {
         pages.forEach((filename) => {
             const route = this.#routes[filename];
 
+            /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route.webSocket === false) {
                 route.methods.forEach((method) => {
                     webRouter[method](route.path, ...route.middleware, async (/** @type {Express.Request} */ req, /** @type {Express.Response} */ res, /** @type {Express.NextFunction} */ next) => {
@@ -222,6 +224,7 @@ class Router extends EventEmitter {
         // Use a catch all route if it is setup.
         if (this.#catchAllFilename !== "") {
             const routeCatchAll = this.#routes[this.#catchAllFilename];
+            /* istanbul ignore else - We're only using the if for type narrowing. */
             if (routeCatchAll.webSocket === false) {
                 webRouter.use(...routeCatchAll.middleware, async (req, res, next) => {
                     if (res.headersSent) {
@@ -266,6 +269,7 @@ class Router extends EventEmitter {
         webSockets.forEach((filename) => {
             const route = this.#routes[filename];
 
+            /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route.webSocket) {
                 if (WsExpress && webSocketRouter instanceof WsExpress.Router) {
                     webSocketRouter.ws(route.path, ...route.middleware, async (req, res) => {
@@ -273,20 +277,18 @@ class Router extends EventEmitter {
 
                         route.events.forEach((event) => {
                             ws.on(event === "connection" ? "_init" : event, async (...args) => {
-                                if (route.webSocket) {
-                                    try {
-                                        if (options.hot) {
-                                            await this.#checkCaches([], filename);
-                                        }
-
-                                        await route.class[event](ws, ...args);
-                                    } catch (err) {
-                                        ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
-                                        this.emit("error", {
-                                            message: "An unhandled WebSocket error has occurred.",
-                                            err, req
-                                        });
+                                try {
+                                    if (options.hot) {
+                                        await this.#checkCaches([], filename);
                                     }
+
+                                    await route.class[event](ws, ...args);
+                                } catch (err) {
+                                    ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
+                                    this.emit("error", {
+                                        message: "An unhandled WebSocket error has occurred.",
+                                        err, req
+                                    });
                                 }
                             });
                         });
@@ -314,6 +316,7 @@ class Router extends EventEmitter {
             res.status(405).send("HTTP 405 Method Not Allowed");
         } else {
             const route405 = this.#routes[this.#methodNotAllowedFilename];
+            /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route405.webSocket === false) {
                 await route405.class.get(req, res, next);
             }
@@ -340,6 +343,7 @@ class Router extends EventEmitter {
             res.status(500).send("HTTP 500 Server Error");
         } else {
             const route500 = this.#routes[this.#serverErrorFilename];
+            /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route500.webSocket === false) {
                 await route500.class.get(req, res, next);
             }
