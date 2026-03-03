@@ -449,7 +449,7 @@ class Router extends EventEmitter {
             app.use(options.webSocketRoot, webSocketRouter);
             app.useHTTP(options.webRoot, webRouter);
         } else {
-            /** @type {Express.Application} */(app).use(options.webRoot, webRouter); // eslint-disable-line @stylistic/no-extra-parens
+            /** @type {Express.Application} */(app).use(options.webRoot, webRouter);
         }
     }
 }
