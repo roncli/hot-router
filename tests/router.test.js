@@ -10,10 +10,6 @@ const ErrorRoute = require("./errors/errorRoute"),
     request = require("supertest"),
     WebSocket = require("ws");
 
-if (process.env.VSCODE_INSPECTOR_OPTIONS) {
-    jest.setTimeout(60 * 1000 * 60);
-}
-
 /** @type {typeof import("../router")} */
 let Router;
 
