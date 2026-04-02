@@ -58,7 +58,7 @@ class Router extends EventEmitter {
                 const route404 = this.#routes[this.#notFoundFilename];
                 /* istanbul ignore else - We're only using the if for type narrowing. */
                 if (route404.webSocket === false) {
-                    await route404.class.get(req, res, next);
+                    await route404.class?.get(req, res, next);
                 }
                 return;
             }
@@ -90,7 +90,7 @@ class Router extends EventEmitter {
     /**
      * Checks the cache and refreshes it if necessary.
      * @param {string} file The name of the class.
-     * @returns {Promise} A promise that resolves once the cache is checked.
+     * @returns {Promise<void>}
      */
     async #checkCache(file) {
         // Ensure we've already loaded the class, otherwise bail.
@@ -110,7 +110,7 @@ class Router extends EventEmitter {
      * Checks the caches for multiple files and refreshes them if necessary.
      * @param {string[]} includes The includes to check for.
      * @param {string} filename The file to check for.
-     * @returns {Promise} A promise that resolves once the caches are checked.
+     * @returns {Promise<void>}
      */
     async #checkCaches(includes, filename) {
         await Promise.all([
@@ -123,7 +123,7 @@ class Router extends EventEmitter {
     /**
      * Gets all of the available classes.
      * @param {string} dir The directory to get the classes for.
-     * @returns {Promise} A promise that resolves when all the classes are retrieved.
+     * @returns {Promise<void>}
      */
     async #getClasses(dir) {
         const filenames = [];
@@ -214,8 +214,8 @@ class Router extends EventEmitter {
                     });
                 });
 
-                // Add a fallback for unsupported methods
-                webRouter.all(route.path, async (req, res, next) => {
+                // Add a fallback for unsupported methods if it has a path.
+                webRouter.all(/** @type {string | RegExp} */(route.path), async (req, res, next) => {
                     await this.#handleMethodNotAllowed(req, res, next);
                 });
             }
@@ -271,7 +271,7 @@ class Router extends EventEmitter {
 
             /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route.webSocket) {
-                if (WsExpress && webSocketRouter instanceof WsExpress.Router) {
+                if (WsExpress && webSocketRouter instanceof WsExpress.Router && route.path) {
                     webSocketRouter.ws(route.path, ...route.middleware, async (req, res) => {
                         const ws = await res.accept();
 
@@ -282,7 +282,7 @@ class Router extends EventEmitter {
                                         await this.#checkCaches([], filename);
                                     }
 
-                                    await route.class[event](ws, ...args);
+                                    await route.class?.[event](ws, ...args);
                                 } catch (err) {
                                     ws.send(JSON.stringify({error: "An unhandled error has occurred."}));
                                     this.emit("error", {
@@ -318,7 +318,7 @@ class Router extends EventEmitter {
             const route405 = this.#routes[this.#methodNotAllowedFilename];
             /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route405.webSocket === false) {
-                await route405.class.get(req, res, next);
+                await route405.class?.get(req, res, next);
             }
         }
     }
@@ -345,7 +345,7 @@ class Router extends EventEmitter {
             const route500 = this.#routes[this.#serverErrorFilename];
             /* istanbul ignore else - We're only using the if for type narrowing. */
             if (route500.webSocket === false) {
-                await route500.class.get(req, res, next);
+                await route500.class?.get(req, res, next);
             }
         }
     }
@@ -437,19 +437,19 @@ class Router extends EventEmitter {
             throw new Error("An Express or WebSocketExpress application must be provided.");
         }
 
-        options = {...{hot: false, webRoot: "/", webSocketRoot: "/"}, ...options || {}};
+        const optionsWithDefaults = {...{hot: false, webRoot: "/", webSocketRoot: "/"}, ...options || {}};
 
         await this.#getClasses(routesPath);
 
-        const webSocketRouter = this.#getWebSocketRouter(options);
-        const webRouter = this.#getWebRouter(options);
+        const webSocketRouter = this.#getWebSocketRouter(optionsWithDefaults);
+        const webRouter = this.#getWebRouter(optionsWithDefaults);
         this.#attachErrorHandlers(webRouter);
 
-        if (WsExpress && app instanceof WsExpress.WebSocketExpress) {
-            app.use(options.webSocketRoot, webSocketRouter);
-            app.useHTTP(options.webRoot, webRouter);
+        if (WsExpress && app instanceof WsExpress.WebSocketExpress && webSocketRouter) {
+            app.use(optionsWithDefaults.webSocketRoot, webSocketRouter);
+            app.useHTTP(optionsWithDefaults.webRoot, webRouter);
         } else {
-            /** @type {Express.Application} */(app).use(options.webRoot, webRouter);
+            /** @type {Express.Application} */(app).use(optionsWithDefaults.webRoot, webRouter);
         }
     }
 }

@@ -32,6 +32,7 @@ describe("Router", () => {
 
         test("should throw if setRoutes is called without an app", async () => {
             const router = new Router();
+            // @ts-ignore - We're intentionally calling setRoutes without an app to test error handling.
             await expect(router.setRoutes("./tests/routes", null, {hot: false})).rejects.toThrow("An Express or WebSocketExpress application must be provided.");
         });
 
@@ -429,8 +430,8 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
-            /** @type {Router.RouterErrorEvent} */
-            let error = void 0;
+            let error = /** @type {Router.RouterErrorEvent | undefined} */(void 0);
+
             router.on("error", (data) => {
                 error = data;
             });
@@ -467,7 +468,7 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
-            /** @type {Router.RouterErrorEvent} */
+            /** @type {Router.RouterErrorEvent | undefined} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
@@ -506,7 +507,7 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
-            /** @type {Router.RouterErrorEvent} */
+            /** @type {Router.RouterErrorEvent | undefined} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
@@ -546,7 +547,7 @@ describe("Router", () => {
             const router = new Router();
             const errorSpy = jest.spyOn(router, "error"); // Spy on the error method
 
-            /** @type {Router.RouterErrorEvent} */
+            /** @type {Router.RouterErrorEvent | undefined} */
             let error = void 0;
             router.on("error", (data) => {
                 error = data;
