@@ -13,10 +13,8 @@
         "strictBindCallApply": true,
         "strictBuiltinIteratorReturn": true,
         "strictFunctionTypes": true,
-        "strictNullChecks": true,
-        "strictPropertyInitialization": true,
         "target": "es2022",
-        "types": ["jest"]
+        "types": ["*"]
     },
     "include": [
         "**/*.d.ts",
